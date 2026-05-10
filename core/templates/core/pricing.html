@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Pricing" %} | {% trans "BewerbungsManager" %}
+{% endblock %}
+
+{% block content %}
+<h1>{% trans "Pricing" %}</h1>
+
+<div class="card shadow-sm mt-4">
+    <div class="card-body">
+        <h2 class="h4">{% trans "Premium Plan" %}</h2>
+        <p class="display-6">€1 / {% trans "month" %}</p>
+        <p class="text-muted">
+            {% trans "Planned subscription for long-term application tracking, document storage, and draft preparation tools." %}
+        </p>
+    </div>
+</div>
+{% endblock %}

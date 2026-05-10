@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Home" %} | {% trans "BewerbungsManager" %}
+{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="row align-items-center">
+        <div class="col-lg-7">
+            <h1 class="display-5 fw-bold">
+                {% trans "Your job application archive and document vault." %}
+            </h1>
+
+            <p class="lead mt-3">
+                {% trans "Track applications, store career documents, prepare draft emails, and keep your job search organized from any device." %}
+            </p>
+
+            <div class="mt-4 d-flex gap-2 flex-wrap">
+                <a href="{% url 'core:dashboard' %}" class="btn btn-primary">
+                    {% trans "Go to Dashboard" %}
+                </a>
+
+                <a href="{% url 'core:about' %}" class="btn btn-outline-secondary">
+                    {% trans "Data Protection" %}
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-5 mt-4 mt-lg-0">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5">
+                        {% trans "Core Features" %}
+                    </h2>
+
+                    <ul class="mb-0">
+                        <li>{% trans "Application tracking" %}</li>
+                        <li>{% trans "Reusable document vault" %}</li>
+                        <li>{% trans "Submitted attachment records" %}</li>
+                        <li>{% trans "AI-assisted draft preparation" %}</li>
+                        <li>{% trans "GDPR-focused data controls" %}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

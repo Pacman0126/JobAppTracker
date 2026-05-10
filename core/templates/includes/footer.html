@@ -1,0 +1,15 @@
+{% load i18n %}
+
+<footer class="bg-light border-top py-3 mt-auto">
+    <div class="container d-flex flex-column flex-md-row justify-content-between">
+        <p class="mb-2 mb-md-0 small text-muted">
+            &copy; {% now "Y" %} {% trans "BewerbungsManager" %}
+        </p>
+
+        <p class="mb-0 small">
+            <a href="{% url 'core:about' %}" class="text-muted text-decoration-none">
+                {% trans "Data Protection" %}
+            </a>
+        </p>
+    </div>
+</footer>

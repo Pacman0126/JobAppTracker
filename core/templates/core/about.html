@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Data Protection" %} | {% trans "BewerbungsManager" %}
+{% endblock %}
+
+{% block content %}
+<h1>{% trans "Data Protection" %}</h1>
+
+<p class="lead">
+    {% trans "This platform is designed around private career data, document security, and user-controlled application records." %}
+</p>
+
+<h2 class="h4 mt-4">{% trans "Planned privacy controls" %}</h2>
+
+<ul>
+    <li>{% trans "User-owned application records" %}</li>
+    <li>{% trans "Private document storage" %}</li>
+    <li>{% trans "Secure download views" %}</li>
+    <li>{% trans "Data export tools" %}</li>
+    <li>{% trans "Account and document deletion" %}</li>
+</ul>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% load i18n %}
+
+<nav class="navbar navbar-expand-lg bg-dark navbar-dark">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{% url 'core:home' %}">
+            {% trans "BewerbungsManager" %}
+        </a>
+
+        <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#mainNavbar"
+            aria-controls="mainNavbar"
+            aria-expanded="false"
+            aria-label="{% trans 'Toggle navigation' %}"
+        >
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNavbar">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'core:home' %}">
+                        {% trans "Home" %}
+                    </a>
+                </li>
+
+                {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'core:dashboard' %}">
+                            {% trans "Dashboard" %}
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            {% trans "Applications" %}
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            {% trans "Document Vault" %}
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            {% trans "New Application" %}
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'core:pricing' %}">
+                            {% trans "Pricing" %}
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'core:about' %}">
+                            {% trans "Data Protection" %}
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+
+            <div class="d-flex align-items-center gap-2">
+                <form action="{% url 'set_language' %}" method="post">
+                    {% csrf_token %}
+                    <select
+                        name="language"
+                        class="form-select form-select-sm"
+                        onchange="this.form.submit()"
+                        aria-label="{% trans 'Select language' %}"
+                    >
+                        <option value="en" {% if LANGUAGE_CODE == "en" %}selected{% endif %}>
+                            English
+                        </option>
+                        <option value="de" {% if LANGUAGE_CODE == "de" %}selected{% endif %}>
+                            Deutsch
+                        </option>
+                    </select>
+                </form>
+
+                {% if user.is_authenticated %}
+                    <a class="btn btn-outline-light btn-sm" href="/admin/">
+                        {% trans "Admin" %}
+                    </a>
+                    <span class="text-light small">
+                        {{ user.username }}
+                    </span>
+                {% else %}
+                    <a class="btn btn-outline-light btn-sm" href="/admin/">
+                        {% trans "Login" %}
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
