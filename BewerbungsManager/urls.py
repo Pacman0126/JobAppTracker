@@ -25,11 +25,14 @@ from django.urls import path
 
 urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),
+
 ]
 
 urlpatterns += i18n_patterns(
     path("admin/", admin.site.urls),
     path("", include("core.urls")),
+    path("applications/", include("applications.urls")),
+    path("vault/", include("documents.urls")),
 )
 
 

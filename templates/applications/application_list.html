@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Applications" %} | {% trans "BewerbungsManager" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{% trans "Applications" %}</h1>
+    <a href="#" class="btn btn-primary">
+        {% trans "New Application" %}
+    </a>
+</div>
+
+{% if applications %}
+    <div class="list-group">
+        {% for application in applications %}
+            <div class="list-group-item">
+                <h2 class="h5 mb-1">{{ application.job_title }}</h2>
+                <p class="mb-1">
+                    {{ application.company.name }} · {{ application.get_status_display }}
+                </p>
+                <small class="text-muted">
+                    {% trans "Created" %}: {{ application.created_at|date:"d.m.Y" }}
+                </small>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        {% trans "No applications have been added yet." %}
+    </div>
+{% endif %}
+{% endblock %}

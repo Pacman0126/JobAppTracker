@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Document Vault" %} | {% trans "BewerbungsManager" %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{% trans "Document Vault" %}</h1>
+
+    <a href="{% url 'documents:document_upload' %}" class="btn btn-primary">
+        {% trans "Upload Document" %}
+    </a>
+</div>
+
+{% if documents %}
+    <div class="list-group">
+        {% for document in documents %}
+            <div class="list-group-item">
+                <h2 class="h5 mb-1">
+                    {{ document.title }}
+                </h2>
+
+                <p class="mb-1">
+                    {{ document.get_document_type_display }}
+                </p>
+
+                <small class="text-muted">
+                    {% trans "Uploaded" %}: {{ document.uploaded_at|date:"d.m.Y" }}
+                </small>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        {% trans "No documents have been uploaded yet." %}
+    </div>
+{% endif %}
+{% endblock %}

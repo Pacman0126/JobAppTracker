@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Upload Document" %} | {% trans "BewerbungsManager" %}
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{% trans "Upload Document" %}</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {{ form.as_p }}
+
+            <button type="submit" class="btn btn-primary">
+                {% trans "Upload" %}
+            </button>
+
+            <a href="{% url 'documents:document_list' %}" class="btn btn-outline-secondary">
+                {% trans "Cancel" %}
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}
