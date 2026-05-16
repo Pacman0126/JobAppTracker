@@ -2,7 +2,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.shortcuts import render
-
+from django.http import FileResponse
+from django.shortcuts import get_object_or_404
 from .forms import UserDocumentForm
 from .models import UserDocument
 
@@ -47,4 +48,19 @@ def document_upload(request):
         {
             "form": form,
         },
+    )
+
+
+@login_required
+def document_download(request, pk):
+    document = get_object_or_404(
+        UserDocument,
+        pk=pk,
+        user=request.user,
+    )
+
+    return FileResponse(
+        document.file.open("rb"),
+        as_attachment=True,
+        filename=document.original_filename or document.file.name,
     )

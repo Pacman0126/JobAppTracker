@@ -26,9 +26,18 @@
                     {{ document.get_document_type_display }}
                 </p>
 
-                <small class="text-muted">
+                <small class="text-muted d-block">
                     {% trans "Uploaded" %}: {{ document.uploaded_at|date:"d.m.Y" }}
                 </small>
+
+                <div class="mt-2">
+                    <a
+                        href="{% url 'documents:document_download' document.pk %}"
+                        class="btn btn-sm btn-outline-primary"
+                    >
+                        {% trans "Download" %}
+                    </a>
+                </div>
             </div>
         {% endfor %}
     </div>
