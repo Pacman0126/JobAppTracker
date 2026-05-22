@@ -8,25 +8,245 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>{% trans "Applications" %}</h1>
-    <a href="#" class="btn btn-primary">
+
+    <a href="{% url 'applications:application_create' %}" class="btn btn-primary">
         {% trans "New Application" %}
     </a>
 </div>
 
 {% if applications %}
-    <div class="list-group">
+    <div class="d-none d-xl-block">
         {% for application in applications %}
-            <div class="list-group-item">
-                <h2 class="h5 mb-1">{{ application.job_title }}</h2>
-                <p class="mb-1">
-                    {{ application.company.name }} · {{ application.get_status_display }}
-                </p>
-                <small class="text-muted">
-                    {% trans "Created" %}: {{ application.created_at|date:"d.m.Y" }}
-                </small>
+            <div class="application-desktop-record {% cycle 'application-band-light' 'application-band-dark' %}">
+                <div class="row g-3 align-items-start">
+                    <div class="col-2">
+                        <strong>{% trans "Company" %}</strong>
+                        <div>{{ application.company.name }}</div>
+                    </div>
+
+                    <div class="col-4">
+                        <strong>{% trans "Job Title" %}</strong>
+                        <div class="fw-bold">{{ application.job_title }}</div>
+                        {% if application.job_url %}
+                            <a href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer" class="small">
+                                {% trans "Job Link" %}
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-2">
+                        <strong>{% trans "Location" %}</strong>
+                        <div>{{ application.location|default:"-" }}</div>
+                    </div>
+
+                    <div class="col-2">
+                        <strong>{% trans "Source" %}</strong>
+                        <div>{{ application.source_website|default:"-" }}</div>
+                    </div>
+
+                    <div class="col-2">
+                        <strong>{% trans "Type" %}</strong>
+                        <div>{{ application.get_application_method_display }}</div>
+                    </div>
+                </div>
+
+                <hr class="my-2">
+
+                <div class="d-flex flex-wrap gap-4 small">
+                    <div>
+                        <strong>{% trans "Contact" %}:</strong>
+                        {% if application.company.contact_person %}
+                            {{ application.company.contact_person }}
+                        {% endif %}
+                        {% if application.company.contact_email %}
+                            <a href="mailto:{{ application.company.contact_email }}">
+                                {{ application.company.contact_email }}
+                            </a>
+                        {% endif %}
+                        {% if not application.company.contact_person and not application.company.contact_email %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <strong>{% trans "Status" %}:</strong>
+                        {{ application.get_status_display }}
+                    </div>
+
+                    <div>
+                        <strong>{% trans "Date Applied" %}:</strong>
+                        {% if application.date_applied %}
+                            {{ application.date_applied|date:"d.m.Y" }}
+                        {% else %}
+                            <span class="text-muted">{% trans "Not submitted" %}</span>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <strong>{% trans "Documents" %}:</strong>
+                        {% if application.application_documents.all %}
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-primary py-0"
+                                data-bs-toggle="modal"
+                                data-bs-target="#documentsModal{{ application.id }}"
+                            >
+                                {{ application.application_documents.all|length }}
+                                {% trans "document(s)" %}
+                            </button>
+                        {% else %}
+                            <span class="text-muted">{% trans "None" %}</span>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <strong>{% trans "Days Elapsed" %}:</strong>
+                        {% if application.days_since_applied is not None %}
+                            {{ application.days_since_applied }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         {% endfor %}
     </div>
+
+    <div class="d-xl-none">
+        {% for application in applications %}
+            
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body">
+                        <h2 class="h5">{{ application.job_title }}</h2>
+
+                        <p class="mb-1">
+                            <strong>{% trans "Company" %}:</strong>
+                            {{ application.company.name }}
+                        </p>
+
+                        <p class="mb-1">
+                            <strong>{% trans "Location" %}:</strong>
+                            {{ application.location|default:"-" }}
+                        </p>
+
+                        <p class="mb-1">
+                            <strong>{% trans "Source" %}:</strong>
+                            {{ application.source_website|default:"-" }}
+                        </p>
+
+                        <p class="mb-1">
+                            <strong>{% trans "Application Type" %}:</strong>
+                            {{ application.get_application_method_display }}
+                        </p>
+
+                        <p class="mb-1">
+                            <strong>{% trans "Contact" %}:</strong>
+                            {% if application.company.contact_person %}
+                                {{ application.company.contact_person }}
+                            {% else %}
+                                -
+                            {% endif %}
+                            {% if application.company.contact_email %}
+                                <br>
+                                <a href="mailto:{{ application.company.contact_email }}">
+                                    {{ application.company.contact_email }}
+                                </a>
+                            {% endif %}
+                        </p>
+
+                        <p class="mb-1">
+                            <strong>{% trans "Status" %}:</strong>
+                            {{ application.get_status_display }}
+                        </p>
+
+                        <p class="mb-1">
+                            <strong>{% trans "Date Applied" %}:</strong>
+                            {% if application.date_applied %}
+                                {{ application.date_applied|date:"d.m.Y" }}
+                            {% else %}
+                                {% trans "Not submitted" %}
+                            {% endif %}
+                        </p>
+
+                        <p class="mb-3">
+                            <strong>{% trans "Days Elapsed" %}:</strong>
+                            {% if application.days_since_applied is not None %}
+                                {{ application.days_since_applied }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </p>
+
+                        {% if application.job_url %}
+                            <a href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+                                {% trans "Job Link" %}
+                            </a>
+                        {% endif %}
+
+                        {% if application.application_documents.all %}
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#documentsModal{{ application.id }}"
+                            >
+                                {% trans "View Documents" %}
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+        
+        {% endfor %}
+    </div>
+
+    {% for application in applications %}
+        <div class="modal fade" id="documentsModal{{ application.id }}" tabindex="-1" aria-labelledby="documentsModalLabel{{ application.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title h5" id="documentsModalLabel{{ application.id }}">
+                            {% trans "Submitted Documents" %}
+                        </h2>
+
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Close' %}"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <p class="mb-3">
+                            <strong>{{ application.job_title }}</strong><br>
+                            {{ application.company.name }}
+                        </p>
+
+                        {% for link in application.application_documents.all %}
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="docCheck{{ link.id }}">
+
+                                <label class="form-check-label" for="docCheck{{ link.id }}">
+                                    {{ link.document.title }}
+                                    <span class="text-muted">
+                                        ({{ link.document.get_document_type_display }})
+                                    </span>
+                                </label>
+
+                                <div class="mt-1">
+                                    <a href="{% url 'documents:document_download' link.document.pk %}" class="btn btn-sm btn-outline-secondary">
+                                        {% trans "Download" %}
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            {% trans "Close" %}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+
 {% else %}
     <div class="alert alert-info">
         {% trans "No applications have been added yet." %}

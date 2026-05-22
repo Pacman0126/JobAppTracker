@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "New Application" %} | {% trans "BewerbungsManager" %}
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{% trans "New Application" %}</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+
+            <h2 class="h5 mb-3">{% trans "Company Details" %}</h2>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.company_name.label_tag }}
+                    {{ form.company_name }}
+                    {{ form.company_name.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.company_website.label_tag }}
+                    {{ form.company_website }}
+                    {{ form.company_website.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.contact_person.label_tag }}
+                    {{ form.contact_person }}
+                    {{ form.contact_person.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.contact_email.label_tag }}
+                    {{ form.contact_email }}
+                    {{ form.contact_email.errors }}
+                </div>
+            </div>
+
+            <hr>
+
+            <h2 class="h5 mb-3">{% trans "Application Details" %}</h2>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.job_title.label_tag }}
+                    {{ form.job_title }}
+                    {{ form.job_title.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.location.label_tag }}
+                    {{ form.location }}
+                    {{ form.location.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.source_website.label_tag }}
+                    {{ form.source_website }}
+                    {{ form.source_website.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.application_method.label_tag }}
+                    {{ form.application_method }}
+                    {{ form.application_method.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.job_url.label_tag }}
+                    {{ form.job_url }}
+                    {{ form.job_url.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.date_found.label_tag }}
+                    {{ form.date_found }}
+                    {{ form.date_found.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.date_applied.label_tag }}
+                    {{ form.date_applied }}
+                    {{ form.date_applied.errors }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    {{ form.status.label_tag }}
+                    {{ form.status }}
+                    {{ form.status.errors }}
+                </div>
+
+                <div class="col-12 mb-3">
+                    {{ form.job_description.label_tag }}
+                    {{ form.job_description }}
+                    {{ form.job_description.errors }}
+                </div>
+
+                <div class="col-12 mb-3">
+                    {{ form.notes.label_tag }}
+                    {{ form.notes }}
+                    {{ form.notes.errors }}
+                </div>
+            </div>
+
+            <hr>
+
+            <h2 class="h5 mb-3">{% trans "Submitted Documents" %}</h2>
+
+            <div class="border rounded p-3 mb-4">
+                {% if form.submitted_documents.field.queryset %}
+                    {{ form.submitted_documents }}
+                    {{ form.submitted_documents.errors }}
+                {% else %}
+                    <p class="text-muted mb-0">
+                        {% trans "No documents are available in your vault yet." %}
+                    </p>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                {% trans "Save Application" %}
+            </button>
+
+            <a href="{% url 'applications:application_list' %}" class="btn btn-outline-secondary">
+                {% trans "Cancel" %}
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}
