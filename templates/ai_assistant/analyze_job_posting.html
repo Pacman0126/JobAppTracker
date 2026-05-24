@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Analyze Job Posting" %} | BewerbungsManager
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    {% trans "Analyze Job Posting" %}
+</h1>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label for="job_url" class="form-label">
+                    {% trans "Job Posting URL" %}
+                </label>
+
+                <input
+                    type="url"
+                    class="form-control"
+                    id="job_url"
+                    name="job_url"
+                    value="{{ job_url|default:'' }}"
+                    placeholder="https://..."
+                >
+            </div>
+
+            <div class="mb-3">
+                <label for="pasted_job_text" class="form-label">
+                    {% trans "Fallback: Paste Job Description Text" %}
+                </label>
+
+                <textarea
+                    class="form-control"
+                    id="pasted_job_text"
+                    name="pasted_job_text"
+                    rows="8"
+                    placeholder="{% trans 'Paste the job posting text here if the URL cannot be read properly.' %}"
+                >{{ pasted_job_text|default:'' }}</textarea>
+
+                <div class="form-text">
+                    {% trans "If pasted text is provided, it will be used instead of the URL extraction." %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                {% trans "Analyze Posting" %}
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if result %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            {% if result.success %}
+                <div class="alert alert-success">
+                    {{ result.message }}
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    {{ result.message }}
+                </div>
+            {% endif %}
+
+            {% if structured_data %}
+
+            {% if missing_fields %}
+                <div class="alert alert-warning mb-4">
+                    <strong>Some fields could not be detected:</strong>
+
+                    <ul class="mb-0 mt-2">
+                        {% for field in missing_fields %}
+                            <li>{{ field }}</li>
+                        {% endfor %}
+                    </ul>
+
+                    <div class="mt-2">
+                        Paste additional job text or contact details to improve extraction.
+                    </div>
+                </div>
+            {% endif %}
+
+                <h2 class="h5 mb-3">
+                    {% trans "Detected Application Details" %}
+                </h2>
+
+                <form
+                    method="post"
+                    action="{% url 'ai_assistant:use_extracted_job_data' %}"
+                >
+                    {% csrf_token %}
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                {% trans "Company" %}
+                            </label>
+                            <input
+                                class="form-control"
+                                name="company_name"
+                                value="{{ structured_data.company_name }}"
+                            >
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                {% trans "Job Title" %}
+                            </label>
+                            <input
+                                class="form-control"
+                                name="job_title"
+                                value="{{ structured_data.job_title }}"
+                            >
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                {% trans "Location" %}
+                            </label>
+                            <input
+                                class="form-control"
+                                name="location"
+                                value="{{ structured_data.location }}"
+                            >
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                {% trans "Source Website" %}
+                            </label>
+                            <input
+                                class="form-control"
+                                name="source_website"
+                                value="{{ structured_data.source_website }}"
+                            >
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                {% trans "Application Method" %}
+                            </label>
+
+                            <select class="form-select" name="application_method">
+                                <option
+                                    value="job_board"
+                                    {% if structured_data.application_method == "job_board" %}selected{% endif %}
+                                >
+                                    Job board portal
+                                </option>
+                                <option
+                                    value="employer_website"
+                                    {% if structured_data.application_method == "employer_website" %}selected{% endif %}
+                                >
+                                    Employer website
+                                </option>
+                                <option
+                                    value="email"
+                                    {% if structured_data.application_method == "email" %}selected{% endif %}
+                                >
+                                    Email application
+                                </option>
+                                <option
+                                    value="recruiter"
+                                    {% if structured_data.application_method == "recruiter" %}selected{% endif %}
+                                >
+                                    Recruiter contact
+                                </option>
+                                <option
+                                    value="direct_contact"
+                                    {% if structured_data.application_method == "direct_contact" %}selected{% endif %}
+                                >
+                                    Direct company contact
+                                </option>
+                                <option
+                                    value="other"
+                                    {% if structured_data.application_method == "other" %}selected{% endif %}
+                                >
+                                    Other
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                {% trans "Contact Email" %}
+                            </label>
+                            <input
+                                class="form-control"
+                                name="contact_email"
+                                value="{{ structured_data.contact_email }}"
+                            >
+                        </div>
+
+                        <input
+                            type="hidden"
+                            name="contact_person"
+                            value="{{ structured_data.contact_person }}"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="company_website"
+                            value=""
+                        >
+
+                        <input
+                            type="hidden"
+                            name="job_url"
+                            value="{{ structured_data.job_url }}"
+                        >
+
+                        <div class="col-12 mb-3">
+                            <label class="form-label">
+                                {% trans "Job Description" %}
+                            </label>
+
+                            <textarea
+                                class="form-control"
+                                name="job_description"
+                                rows="8"
+                            >{{ structured_data.job_description }}</textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">
+                        {% trans "Use This Data in New Application" %}
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="h5 mb-3">
+                {% trans "Extracted / Pasted Text Preview" %}
+            </h2>
+
+            <div
+                class="border rounded p-3 bg-light"
+                style="
+                    max-height: 500px;
+                    overflow-y: auto;
+                    white-space: pre-wrap;
+                    font-size: 0.9rem;
+                "
+            >
+                {{ result.text }}
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

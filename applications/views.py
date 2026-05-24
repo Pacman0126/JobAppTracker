@@ -75,7 +75,8 @@ def application_create(request):
             return redirect("applications:application_list")
 
     else:
-        form = JobApplicationForm()
+        form = JobApplicationForm(
+            initial=request.GET.dict(), user=request.user,)
 
     return render(
         request,
