@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from .location_utils import verify_german_location_with_google
 
 
 def extract_text_from_url(url):
@@ -254,6 +255,11 @@ def extract_structured_job_data(text, url=""):
     job_title = clean_job_title(job_title)
     company_name = clean_company_name(company_name)
 
+    if location:
+        verified_location = verify_german_location_with_google(location)
+        if verified_location:
+            location = verified_location
+
     return {
         "company_name": company_name,
         "job_title": job_title,
@@ -282,39 +288,76 @@ def clean_company_name(company_name):
 
 def extract_german_location(cleaned_text):
     """
-    Extract German postal-code + city.
+    Extract and verify German postal-code + city.
+
     Examples:
     96052 Bamberg
     33415 Verl
     60311 Frankfurt am Main
+
+    Rejects:
+    10000 Mitarbeiter
+    5001-10000 Mitarbeiter
     """
 
-    match = re.search(
+    # Find ALL possible German postal-code candidates
+    matches = re.findall(
         r"\b(\d{5})\s+"
         r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
         r"(?:\s+(?:am|an|im|in|der|den|dem|"
-        r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,3})",
+        r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,4})",
         cleaned_text,
     )
 
-    if not match:
+    if not matches:
         return ""
 
-    location = f"{match.group(1)} {match.group(2)}"
+    bad_words = {
+        "mitarbeiter",
+        "jobs",
+        "bewertungen",
+        "unternehmen",
+        "unternehmensporträt",
+        "gehalt",
+        "vollzeit",
+        "teilzeit",
+        "festanstellung",
+        "tage",
+        "bewerbungen",
+        "sterne",
+    }
 
-    stop_words = [
-        " Festanstellung",
-        " Teilzeit",
-        " Vollzeit",
-        " Homeoffice",
-        " Hat ",
-        " Location",
-        " Benefits",
-        " Stellenbeschreibung",
-    ]
+    for postcode, city in matches:
 
-    for stop_word in stop_words:
-        if stop_word in location:
-            location = location.split(stop_word)[0]
+        candidate = f"{postcode} {city}".strip()
 
-    return location.strip()
+        lowered = candidate.lower()
+
+        # Reject obvious junk
+        if any(word in lowered for word in bad_words):
+            continue
+
+        # Clean trailing junk words
+        candidate = re.split(
+            r"\b("
+            r"Festanstellung|"
+            r"Teilzeit|"
+            r"Vollzeit|"
+            r"Homeoffice|"
+            r"Hat|"
+            r"Tage|"
+            r"Benefits|"
+            r"Stellenbeschreibung|"
+            r"Jobs|"
+            r"Bewertungen"
+            r")\b",
+            candidate,
+        )[0].strip()
+
+        # Verify against Google Maps
+        verified_location = verify_german_location_with_google(candidate)
+
+        if verified_location:
+            return verified_location
+
+    return ""
