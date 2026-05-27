@@ -16,10 +16,14 @@ urlpatterns = [
 
 urlpatterns += i18n_patterns(
     path("admin/", admin.site.urls),
+    path("accounts/", include("allauth.urls")),
     path("", include("core.urls")),
     path("applications/", include("applications.urls")),
     path("vault/", include("documents.urls")),
     path("ai/", include("ai_assistant.urls")),
+    path("accounts/", include("accounts.urls")),
+
+
 )
 
 
