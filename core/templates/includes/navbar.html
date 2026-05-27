@@ -27,41 +27,25 @@
                 </li>
 
                 {% if user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'core:dashboard' %}">
-                            {% trans "Dashboard" %}
-                        </a>
-                    </li>
+                    <a class="btn btn-outline-light btn-sm" href="{% url 'accounts:profile_detail' %}">
+                        {% trans "Profile" %}
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'applications:application_list' %}">
-                            {% trans "Applications" %}
-                        </a>
-                    </li>
+                    <a class="btn btn-outline-light btn-sm" href="{% url 'account_logout' %}">
+                        {% trans "Logout" %}
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'documents:document_list' %}">
-                            {% trans "Document Vault" %}
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'applications:application_create' %}">
-                            {% trans "New Application" %}
-                        </a>
-                    </li>
+                    <span class="text-light small">
+                        {{ user.username }}
+                    </span>
                 {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'core:pricing' %}">
-                            {% trans "Pricing" %}
-                        </a>
-                    </li>
+                    <a class="btn btn-outline-light btn-sm" href="{% url 'account_login' %}">
+                        {% trans "Login" %}
+                    </a>
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'core:about' %}">
-                            {% trans "Data Protection" %}
-                        </a>
-                    </li>
+                    <a class="btn btn-light btn-sm" href="{% url 'account_signup' %}">
+                        {% trans "Register" %}
+                    </a>
                 {% endif %}
             </ul>
 
