@@ -15,7 +15,6 @@ class UserProfileForm(forms.ModelForm):
             "postal_code",
             "city",
             "country",
-            "home_location",
             "applicant_summary",
             "key_skills",
             "preferred_language",

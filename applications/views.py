@@ -60,11 +60,42 @@ def application_create(request):
                     form.cleaned_data.get("contact_email")
                     or company.contact_email
                 )
+                company.contact_person = request.POST.get(
+                    "contact_person",
+                    ""
+                )
+
+                company.contact_email = request.POST.get(
+                    "contact_email",
+                    ""
+                )
+
+                company.contact_phone = request.POST.get(
+                    "contact_phone",
+                    ""
+                )
+
                 company.save()
 
             application = form.save(commit=False)
             application.user = request.user
             application.company = company
+
+            application.contact_person_snapshot = request.POST.get(
+                "contact_person",
+                ""
+            )
+
+            application.contact_email_snapshot = request.POST.get(
+                "contact_email",
+                ""
+            )
+
+            application.contact_phone_snapshot = request.POST.get(
+                "contact_phone",
+                ""
+            )
+
             application.save()
 
             messages.success(

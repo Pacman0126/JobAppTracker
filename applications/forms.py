@@ -19,6 +19,21 @@ class JobApplicationForm(forms.ModelForm):
         label="Documents submitted with this application",
     )
 
+    contact_person_snapshot = forms.CharField(
+        required=False,
+        label="Contact Person",
+    )
+
+    contact_email_snapshot = forms.EmailField(
+        required=False,
+        label="Contact Email",
+    )
+
+    contact_phone_snapshot = forms.CharField(
+        required=False,
+        label="Contact Phone",
+    )
+
     class Meta:
         model = JobApplication
         fields = [
@@ -29,6 +44,9 @@ class JobApplicationForm(forms.ModelForm):
             "job_title",
             "location",
             "source_website",
+            "contact_person_snapshot",
+            "contact_email_snapshot",
+            "contact_phone_snapshot",
             "application_method",
             "job_url",
             "job_description",

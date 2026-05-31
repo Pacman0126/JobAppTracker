@@ -138,6 +138,7 @@ def extract_structured_job_data(text, url=""):
     company_name = ""
     job_title = ""
     location = extract_german_location(cleaned_text)
+    locations = extract_multiple_german_locations(cleaned_text)
     contact_person = ""
     contact_email = ""
 
@@ -264,6 +265,7 @@ def extract_structured_job_data(text, url=""):
         "company_name": company_name,
         "job_title": job_title,
         "location": location,
+        "locations": locations,
         "source_website": source_website,
         "application_method": application_method,
         "contact_person": contact_person,
@@ -361,3 +363,326 @@ def extract_german_location(cleaned_text):
             return verified_location
 
     return ""
+
+
+# def extract_multiple_german_locations(cleaned_text):
+#     verified_locations = []
+
+#     header_stop_markers = [
+#         "Stellenbeschreibung",
+#         "Tätigkeitsbereich",
+#         "Aufgaben",
+#         "Anforderungen",
+#         "Profil",
+#         "Wir bieten",
+#         "Kontakt",
+#         "Benefits",
+#         "Full job description",
+#         "Job Description",
+#     ]
+
+#     header_text = cleaned_text
+
+#     for marker in header_stop_markers:
+#         marker_index = header_text.lower().find(marker.lower())
+
+#         if marker_index != -1:
+#             header_text = header_text[:marker_index]
+#             break
+
+#     header_text = header_text[:3000]
+
+#     bad_candidate_words = {
+#         "vollzeit",
+#         "teilzeit",
+#         "festanstellung",
+#         "homeoffice",
+#         "gehalt",
+#         "benefits",
+#         "bewerbungen",
+#         "mitarbeiter",
+#         "stars",
+#         "tage",
+#         "job",
+#         "jobs",
+#         "stellenbeschreibung",
+#         "finden",
+#         "software",
+#         "entwickler",
+#         "finanz",
+#         "informatik",
+#     }
+
+#     def clean_city_candidate(candidate):
+#         candidate = candidate.strip(" .;:-")
+
+#         candidate = re.sub(
+#             r"^.*\b(GmbH\s*&\s*Co\.\s*KG|GmbH|AG|KG|SE|UG|OHG)\s+",
+#             "",
+#             candidate,
+#             flags=re.IGNORECASE,
+#         )
+
+#         candidate = re.split(
+#             r"\b("
+#             r"Feste Anstellung|Festanstellung|Vollzeit|Teilzeit|"
+#             r"Homeoffice|Erschienen|Gehalt|Benefits|Job|Jobs"
+#             r")\b",
+#             candidate,
+#             flags=re.IGNORECASE,
+#         )[0]
+
+#         return candidate.strip(" .;:-")
+
+#     location_phrases = []
+
+#     # Pattern 1:
+#     # Standort Hannover, Münster oder Frankfurt am Main
+#     targeted_patterns = [
+#         r"Standort\s+(.{3,160}?)(?:\s+einen|\s+eine|\s+zum|\s+zur|\.|$)",
+#         r"Arbeitsort\s+(.{3,160}?)(?:\s+einen|\s+eine|\s+zum|\s+zur|\.|$)",
+#     ]
+
+#     for pattern in targeted_patterns:
+#         for match in re.findall(pattern, header_text, flags=re.IGNORECASE):
+#             location_phrases.append(match)
+
+#     # Pattern 2:
+#     # Company name + Hannover, Münster, Frankfurt am Main + Feste Anstellung
+#     company_location_match = re.search(
+#         r"(?:GmbH\s*&\s*Co\.\s*KG|GmbH|AG|KG|SE|UG|OHG)\s+"
+#         r"(.{3,180}?)\s+"
+#         r"(?:Feste Anstellung|Festanstellung|Vollzeit|Teilzeit|Homeoffice)",
+#         header_text,
+#         flags=re.IGNORECASE,
+#     )
+
+#     if company_location_match:
+#         location_phrases.append(company_location_match.group(1))
+
+#     # Pattern 3:
+#     # Generic comma-separated city group
+#     comma_groups = re.findall(
+#         r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\- ]+"
+#         r"(?:,\s*[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\- ]+)+)",
+#         header_text,
+#     )
+
+#     location_phrases.extend(comma_groups)
+
+#     city_name_pattern = re.compile(
+#         r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
+#         r"(?:\s+(?:am|an|im|in|der|den|dem|"
+#         r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,3}\b"
+#     )
+
+#     for phrase in location_phrases:
+#         city_candidates = []
+
+#         for part in re.split(r",|\s+oder\s+", phrase):
+#             part = clean_city_candidate(part)
+
+#             match = city_name_pattern.search(part)
+
+#             if match:
+#                 city_candidates.append(match.group(0))
+
+#         for city_candidate in city_candidates:
+#             lowered = city_candidate.lower()
+
+#     # Pattern 4:
+#     # Standort Hannover, Münster oder Frankfurt am Main
+#     oder_location_match = re.search(
+#         r"Standort\s+(.{3,120}?)\s+(?:einen|eine|zum|zur|als|in Vollzeit|Vollzeit|Teilzeit)",
+#         header_text,
+#         flags=re.IGNORECASE,
+#     )
+
+#     if oder_location_match:
+#         phrase = oder_location_match.group(1)
+
+#         city_candidates = re.split(r",|\s+oder\s+", phrase)
+
+#         for city_candidate in city_candidates:
+#             city_candidate = clean_city_candidate(city_candidate)
+
+#             if not city_candidate:
+#                 continue
+
+#             verified = verify_german_location_with_google(city_candidate)
+
+#             if verified and verified not in verified_locations:
+#                 verified_locations.append(verified)
+
+#     print("\n=== LOCATION PHRASES ===")
+#     for phrase in location_phrases:
+#         print(phrase)
+
+#     print("\n=== VERIFIED LOCATIONS ===")
+#     for loc in verified_locations:
+#         print(loc)
+
+#     if verified_locations:
+#         return verified_locations
+
+#     # Postal-code fallback
+#     postal_candidates = re.findall(
+#         r"\b(\d{5})\s+"
+#         r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
+#         r"(?:\s+(?:am|an|im|in|der|den|dem|"
+#         r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,4})",
+#         header_text,
+#     )
+
+#     for postcode, city in postal_candidates:
+#         candidate = f"{postcode} {city}".strip()
+#         verified = verify_german_location_with_google(candidate)
+
+#         if verified and verified not in verified_locations:
+#             verified_locations.append(verified)
+
+#     return verified_locations
+def extract_multiple_german_locations(cleaned_text):
+    verified_locations = []
+
+    header_stop_markers = [
+        "Stellenbeschreibung",
+        "Tätigkeitsbereich",
+        "Aufgaben",
+        "Anforderungen",
+        "Profil",
+        "Wir bieten",
+        "Kontakt",
+        "Benefits",
+        "Full job description",
+        "Job Description",
+    ]
+
+    header_text = cleaned_text
+
+    for marker in header_stop_markers:
+        marker_index = header_text.lower().find(marker.lower())
+
+        if marker_index != -1:
+            header_text = header_text[:marker_index]
+            break
+
+    header_text = header_text[:3000]
+
+    bad_candidate_words = {
+        "vollzeit",
+        "teilzeit",
+        "festanstellung",
+        "homeoffice",
+        "gehalt",
+        "benefits",
+        "bewerbungen",
+        "mitarbeiter",
+        "stars",
+        "tage",
+        "job",
+        "jobs",
+        "stellenbeschreibung",
+        "finden",
+        "software",
+        "entwickler",
+        "finanz",
+        "informatik",
+    }
+
+    def clean_city_candidate(candidate):
+        candidate = candidate.strip(" .;:-")
+
+        candidate = re.sub(
+            r"^.*\b(GmbH\s*&\s*Co\.\s*KG|GmbH|AG|KG|SE|UG|OHG)\s+",
+            "",
+            candidate,
+            flags=re.IGNORECASE,
+        )
+
+        candidate = re.split(
+            r"\b("
+            r"Feste Anstellung|Festanstellung|Vollzeit|Teilzeit|"
+            r"Homeoffice|Erschienen|Gehalt|Benefits|Job|Jobs|finden"
+            r")\b",
+            candidate,
+            flags=re.IGNORECASE,
+        )[0]
+
+        return candidate.strip(" .;:-")
+
+    location_phrases = []
+
+    targeted_patterns = [
+        r"Standort\s+(.{3,180}?)(?:\s+einen|\s+eine|\s+zum|\s+zur|\s+als|\s+in Vollzeit|\s+Vollzeit|\s+Teilzeit|\.|$)",
+        r"Arbeitsort\s+(.{3,180}?)(?:\s+einen|\s+eine|\s+zum|\s+zur|\s+als|\s+in Vollzeit|\s+Vollzeit|\s+Teilzeit|\.|$)",
+    ]
+
+    for pattern in targeted_patterns:
+        for match in re.findall(pattern, header_text, flags=re.IGNORECASE):
+            location_phrases.append(match)
+
+    company_location_match = re.search(
+        r"(?:GmbH\s*&\s*Co\.\s*KG|GmbH|AG|KG|SE|UG|OHG)\s+"
+        r"(.{3,180}?)\s+"
+        r"(?:Feste Anstellung|Festanstellung|Vollzeit|Teilzeit|Homeoffice)",
+        header_text,
+        flags=re.IGNORECASE,
+    )
+
+    if company_location_match:
+        location_phrases.append(company_location_match.group(1))
+
+    comma_groups = re.findall(
+        r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\- ]+"
+        r"(?:,\s*[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\- ]+)+)",
+        header_text,
+    )
+
+    location_phrases.extend(comma_groups)
+
+    city_name_pattern = re.compile(
+        r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
+        r"(?:\s+(?:am|an|im|in|der|den|dem|"
+        r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,3}\b"
+    )
+
+    for phrase in location_phrases:
+        for part in re.split(r",|\s+oder\s+", phrase):
+            part = clean_city_candidate(part)
+
+            match = city_name_pattern.search(part)
+
+            if not match:
+                continue
+
+            city_candidate = match.group(0)
+            lowered = city_candidate.lower()
+
+            if any(word in lowered for word in bad_candidate_words):
+                continue
+
+            verified = verify_german_location_with_google(city_candidate)
+
+            if verified and verified not in verified_locations:
+                verified_locations.append(verified)
+
+    if verified_locations:
+        return verified_locations
+
+    postal_candidates = re.findall(
+        r"\b(\d{5})\s+"
+        r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
+        r"(?:\s+(?:am|an|im|in|der|den|dem|"
+        r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,4})",
+        header_text,
+    )
+
+    for postcode, city in postal_candidates:
+        candidate = f"{postcode} {city}".strip()
+        verified = verify_german_location_with_google(candidate)
+
+        if verified and verified not in verified_locations:
+            verified_locations.append(verified)
+
+    return verified_locations

@@ -24,11 +24,13 @@ def profile_detail(request):
         if form.is_valid():
             profile = form.save(commit=False)
 
-            if profile.home_location:
-                normalized = verify_german_location_with_google(
-                    profile.home_location,
-                )
-                profile.normalized_home_location = normalized
+        profile.home_location = profile.formatted_address
+
+        if profile.home_location:
+            normalized = verify_german_location_with_google(
+                profile.home_location,
+            )
+            profile.normalized_home_location = normalized
 
             profile.save()
 

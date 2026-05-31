@@ -70,25 +70,53 @@
 
             {% if structured_data %}
 
-            {% if missing_fields %}
-                <div class="alert alert-warning mb-4">
-                    <strong>Some fields could not be detected:</strong>
+                {% if missing_fields %}
+                    <div class="alert alert-warning mb-4">
+                        <strong>{% trans "Some fields could not be detected:" %}</strong>
 
-                    <ul class="mb-0 mt-2">
-                        {% for field in missing_fields %}
-                            <li>{{ field }}</li>
-                        {% endfor %}
-                    </ul>
+                        <ul class="mb-0 mt-2">
+                            {% for field in missing_fields %}
+                                <li>{{ field }}</li>
+                            {% endfor %}
+                        </ul>
 
-                    <div class="mt-2">
-                        Paste additional job text or contact details to improve extraction.
+                        <div class="mt-2">
+                            {% trans "Paste additional job text or contact details to improve extraction." %}
+                        </div>
                     </div>
-                </div>
-            {% endif %}
+                {% endif %}
 
-                <h2 class="h5 mb-3">
-                    {% trans "Detected Application Details" %}
-                </h2>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h5 mb-0">
+                        {% trans "Detected Application Details" %}
+                    </h2>
+
+                    {% if commute_routes and google_maps_browser_key %}
+                        <button
+                            type="button"
+                            class="btn btn-warning btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#commuteMapModal"
+                            data-routes-source="commute-routes-json"
+                        >
+                            {% trans "View Commute Map" %}
+                        </button>
+                    {% endif %}
+                </div>
+
+                {% if commute_routes %}
+                    <script id="commute-routes-json" type="application/json">
+                        [
+                            {% for route in commute_routes %}
+                                {
+                                    "name": "{{ route.name|escapejs }}",
+                                    "start": "{{ route.start|escapejs }}",
+                                    "end": "{{ route.end|escapejs }}"
+                                }{% if not forloop.last %},{% endif %}
+                            {% endfor %}
+                        ]
+                    </script>
+                {% endif %}
 
                 <form
                     method="post"
@@ -143,44 +171,26 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">
-                                {% trans "Application Method" %}
+                                {% trans "Application Method" %},
                             </label>
 
                             <select class="form-select" name="application_method">
-                                <option
-                                    value="job_board"
-                                    {% if structured_data.application_method == "job_board" %}selected{% endif %}
-                                >
+                                <option value="job_board" {% if structured_data.application_method == "job_board" %}selected{% endif %}>
                                     Job board portal
                                 </option>
-                                <option
-                                    value="employer_website"
-                                    {% if structured_data.application_method == "employer_website" %}selected{% endif %}
-                                >
+                                <option value="employer_website" {% if structured_data.application_method == "employer_website" %}selected{% endif %}>
                                     Employer website
                                 </option>
-                                <option
-                                    value="email"
-                                    {% if structured_data.application_method == "email" %}selected{% endif %}
-                                >
+                                <option value="email" {% if structured_data.application_method == "email" %}selected{% endif %}>
                                     Email application
                                 </option>
-                                <option
-                                    value="recruiter"
-                                    {% if structured_data.application_method == "recruiter" %}selected{% endif %}
-                                >
+                                <option value="recruiter" {% if structured_data.application_method == "recruiter" %}selected{% endif %}>
                                     Recruiter contact
                                 </option>
-                                <option
-                                    value="direct_contact"
-                                    {% if structured_data.application_method == "direct_contact" %}selected{% endif %}
-                                >
+                                <option value="direct_contact" {% if structured_data.application_method == "direct_contact" %}selected{% endif %}>
                                     Direct company contact
                                 </option>
-                                <option
-                                    value="other"
-                                    {% if structured_data.application_method == "other" %}selected{% endif %}
-                                >
+                                <option value="other" {% if structured_data.application_method == "other" %}selected{% endif %}>
                                     Other
                                 </option>
                             </select>
@@ -256,4 +266,272 @@
         </div>
     </div>
 {% endif %}
+
+<div
+    class="modal fade"
+    id="commuteMapModal"
+    tabindex="-1"
+    aria-labelledby="commuteMapModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="commuteMapModalLabel">
+                    {% trans "Commute Routes" %}
+                </h2>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="{% trans 'Close' %}"
+                ></button>
+            </div>
+
+            <div class="modal-body bg-light">
+                <div class="row g-3">
+                    <div class="col-12 col-md-8">
+                        <div
+                            id="commuteMap"
+                            class="border rounded shadow-sm"
+                            style="height: 520px; width: 100%;"
+                        ></div>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <h3 class="h6 mb-3">
+                                {% trans "Route Legend" %}
+                            </h3>
+
+                            <ul id="commuteRouteList" class="list-unstyled small mb-0"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+
+    {% if google_maps_browser_key %}
+        <script
+            src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_browser_key }}&callback=initGoogleMaps"
+            async
+            defer
+        ></script>
+
+        <script>
+            let commuteMap = null;
+            let commuteDirectionsService = null;
+            let commuteRenderers = [];
+            let commuteMarkers = [];
+            let commuteBounds = null;
+            let googleMapsReady = false;
+
+            function initGoogleMaps() {
+                googleMapsReady = true;
+                document.dispatchEvent(new Event("google-maps-ready"));
+            }
+
+            async function waitForGoogleMaps() {
+                if (googleMapsReady && window.google && window.google.maps) {
+                    return;
+                }
+
+                await new Promise((resolve) => {
+                    document.addEventListener("google-maps-ready", resolve, {
+                        once: true
+                    });
+                });
+            }
+
+            function routeColor(index) {
+                const colors = [
+                    "#FF5722",
+                    "#03A9F4",
+                    "#4CAF50",
+                    "#FFC107",
+                    "#9C27B0",
+                    "#009688"
+                ];
+
+                return colors[index % colors.length];
+            }
+
+            function clearCommuteMap() {
+                commuteRenderers.forEach((renderer) => renderer.setMap(null));
+                commuteRenderers = [];
+
+                commuteMarkers.forEach((marker) => marker.setMap(null));
+                commuteMarkers = [];
+
+                commuteBounds = new google.maps.LatLngBounds();
+
+                const legend = document.getElementById("commuteRouteList");
+
+                if (legend) {
+                    legend.innerHTML = "";
+                }
+            }
+
+            async function initCommuteMap() {
+                await waitForGoogleMaps();
+
+                if (!commuteMap) {
+                    commuteDirectionsService = new google.maps.DirectionsService();
+
+                    commuteMap = new google.maps.Map(
+                        document.getElementById("commuteMap"),
+                        {
+                            zoom: 8,
+                            center: {
+                                lat: 50.1109,
+                                lng: 8.6821
+                            },
+                            mapTypeControl: false,
+                            streetViewControl: false
+                        }
+                    );
+                }
+            }
+
+            function buildCommuteRoutes(sourceId) {
+                const source = document.getElementById(sourceId);
+
+                if (!source || !commuteMap || !commuteDirectionsService) {
+                    return;
+                }
+
+                const routes = JSON.parse(source.textContent || "[]");
+
+                if (!routes.length) {
+                    return;
+                }
+
+                clearCommuteMap();
+
+                const legend = document.getElementById("commuteRouteList");
+
+                routes.forEach((route, index) => {
+                    const color = routeColor(index);
+
+                    const renderer = new google.maps.DirectionsRenderer({
+                        map: commuteMap,
+                        suppressMarkers: false,
+                        preserveViewport: true,
+                        polylineOptions: {
+                            strokeColor: color,
+                            strokeOpacity: 0.9,
+                            strokeWeight: 5
+                        }
+                    });
+
+                    commuteRenderers.push(renderer);
+
+                    commuteDirectionsService.route(
+                        {
+                            origin: route.start,
+                            destination: route.end,
+                            travelMode: google.maps.TravelMode.DRIVING
+                        },
+                        (response, status) => {
+                            if (status === "OK" && response.routes[0]) {
+                                renderer.setDirections(response);
+
+                                const leg = response.routes[0].legs[0];
+
+                                if (leg) {
+                                    commuteBounds.extend(leg.start_location);
+                                    commuteBounds.extend(leg.end_location);
+
+                                    if (legend) {
+                                        legend.insertAdjacentHTML(
+                                            "beforeend",
+                                            `
+                                                <li class="mb-3">
+                                                    <span
+                                                        class="d-inline-block rounded-circle me-1"
+                                                        style="width: 10px; height: 10px; background: ${color};"
+                                                    ></span>
+                                                    <strong>${route.name}</strong><br>
+                                                    <span class="text-muted">
+                                                        ${leg.distance.text} · ${leg.duration.text}
+                                                    </span><br>
+                                                    <span class="text-muted">
+                                                        ${route.start} → ${route.end}
+                                                    </span>
+                                                </li>
+                                            `
+                                        );
+                                    }
+
+                                    commuteMap.fitBounds(commuteBounds);
+                                }
+                            } else if (legend) {
+                                legend.insertAdjacentHTML(
+                                    "beforeend",
+                                    `
+                                        <li class="mb-3">
+                                            <span
+                                                class="d-inline-block rounded-circle me-1"
+                                                style="width: 10px; height: 10px; background: ${color};"
+                                            ></span>
+                                            <strong>${route.name}</strong><br>
+                                            <span class="text-muted">
+                                                ${leg.distance.text} · ${leg.duration.text}
+                                            </span><br>
+                                            <span class="text-muted">
+                                                ${route.start} → ${route.end}
+                                            </span>
+                                        </li>
+                                    `
+                                );
+                            }
+                        }
+                    );
+                });
+            }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                const modal = document.getElementById("commuteMapModal");
+
+                if (!modal) {
+                    return;
+                }
+
+                modal.addEventListener("show.bs.modal", async (event) => {
+                    await initCommuteMap();
+
+                    const sourceId = event.relatedTarget?.getAttribute(
+                        "data-routes-source"
+                    );
+
+                    if (sourceId) {
+                        buildCommuteRoutes(sourceId);
+                    }
+                });
+
+                modal.addEventListener("shown.bs.modal", () => {
+                    if (window.google && commuteMap) {
+                        google.maps.event.trigger(commuteMap, "resize");
+
+                        if (commuteBounds && !commuteBounds.isEmpty()) {
+                            commuteMap.fitBounds(commuteBounds);
+                        }
+                    }
+                });
+
+                modal.addEventListener("hidden.bs.modal", () => {
+                    if (window.google && commuteMap) {
+                        clearCommuteMap();
+                    }
+                });
+            });
+        </script>
+    {% endif %}
 {% endblock %}

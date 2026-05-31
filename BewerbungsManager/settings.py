@@ -161,5 +161,18 @@ LOGOUT_REDIRECT_URL = "/en/"
 
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
-ACCOUNT_EMAIL_VERIFICATION = "optional"
+ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_UNIQUE_EMAIL = True
+# ACCOUNT_EMAIL_REQUIRED = True
+
+ACCOUNT_ADAPTER = "accounts.adapter.AccountAdapter"
+
+GOOGLE_MAPS_BROWSER_KEY = config(
+    "GOOGLE_MAPS_BROWSER_KEY",
+    default=""
+)
+
+GOOGLE_MAPS_SERVER_KEY = config(
+    "GOOGLE_MAPS_SERVER_KEY",
+    default=""
+)

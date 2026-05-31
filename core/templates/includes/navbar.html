@@ -27,29 +27,57 @@
                 </li>
 
                 {% if user.is_authenticated %}
-                    <a class="btn btn-outline-light btn-sm" href="{% url 'accounts:profile_detail' %}">
-                        {% trans "Profile" %}
-                    </a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'core:dashboard' %}">
+                            {% trans "Dashboard" %}
+                        </a>
+                    </li>
 
-                    <a class="btn btn-outline-light btn-sm" href="{% url 'account_logout' %}">
-                        {% trans "Logout" %}
-                    </a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'applications:application_list' %}">
+                            {% trans "Applications" %}
+                        </a>
+                    </li>
 
-                    <span class="text-light small">
-                        {{ user.username }}
-                    </span>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'applications:application_create' %}">
+                            {% trans "New Application" %}
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'documents:document_list' %}">
+                            {% trans "Document Vault" %}
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'ai_assistant:analyze_job_posting' %}">
+                            {% trans "Analyze Job Posting" %}
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'accounts:profile_detail' %}">
+                            {% trans "Profile" %}
+                        </a>
+                    </li>
                 {% else %}
-                    <a class="btn btn-outline-light btn-sm" href="{% url 'account_login' %}">
-                        {% trans "Login" %}
-                    </a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'core:pricing' %}">
+                            {% trans "Pricing" %}
+                        </a>
+                    </li>
 
-                    <a class="btn btn-light btn-sm" href="{% url 'account_signup' %}">
-                        {% trans "Register" %}
-                    </a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'core:about' %}">
+                            {% trans "Data Protection" %}
+                        </a>
+                    </li>
                 {% endif %}
             </ul>
 
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2">
                 <form action="{% url 'set_language' %}" method="post">
                     {% csrf_token %}
                     <select
@@ -68,15 +96,20 @@
                 </form>
 
                 {% if user.is_authenticated %}
-                    <a class="btn btn-outline-light btn-sm" href="/admin/">
-                        {% trans "Admin" %}
-                    </a>
                     <span class="text-light small">
                         {{ user.username }}
                     </span>
+
+                    <a class="btn btn-outline-light btn-sm" href="{% url 'account_logout' %}">
+                        {% trans "Logout" %}
+                    </a>
                 {% else %}
-                    <a class="btn btn-outline-light btn-sm" href="/admin/">
+                    <a class="btn btn-outline-light btn-sm" href="{% url 'account_login' %}">
                         {% trans "Login" %}
+                    </a>
+
+                    <a class="btn btn-primary btn-sm" href="{% url 'account_signup' %}">
+                        {% trans "Register" %}
                     </a>
                 {% endif %}
             </div>

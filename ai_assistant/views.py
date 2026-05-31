@@ -72,6 +72,50 @@ def analyze_job_posting(request):
         context["job_url"] = url
         context["pasted_job_text"] = pasted_text
 
+        google_maps_browser_key = ""
+
+        try:
+            google_maps_browser_key = __import__(
+                "django.conf"
+            ).conf.settings.GOOGLE_MAPS_BROWSER_KEY
+        except AttributeError:
+            google_maps_browser_key = ""
+
+        home_location = ""
+
+        if request.user.is_authenticated:
+            profile = getattr(request.user, "profile", None)
+
+            if profile:
+                home_location = (
+                    profile.normalized_home_location
+                    or profile.formatted_address
+                    or ""
+                )
+
+        commute_routes = []
+
+        if structured_data and home_location:
+            locations = structured_data.get("locations") or []
+
+            if not locations and structured_data.get("location"):
+                locations = [structured_data["location"]]
+
+            for location in locations:
+                commute_routes.append(
+                    {
+                        "name": (
+                            f"{structured_data.get('company_name', 'Job Location')}"
+                            f" — {location}"
+                        ),
+                        "start": home_location,
+                        "end": location,
+                    }
+                )
+
+        context["commute_routes"] = commute_routes
+        context["google_maps_browser_key"] = google_maps_browser_key
+
     return render(
         request,
         "ai_assistant/analyze_job_posting.html",

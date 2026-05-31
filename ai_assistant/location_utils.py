@@ -1,3 +1,4 @@
+import re
 import requests
 from decouple import config
 
@@ -22,11 +23,15 @@ def looks_like_bad_location(candidate):
 
 def verify_german_location_with_google(candidate):
     """
-    Verify and normalize German locations using Google Geocoding.
+    Verify and normalize German locations.
 
-    Examples:
-    Verl -> 33415 Verl, Deutschland
-    Frankfurt am Main -> 60311 Frankfurt am Main, Deutschland
+    If candidate has a real 5-digit postcode:
+    33415 Verl, Deutschland
+
+    If candidate is city-only:
+    Hannover, Deutschland
+    Münster, Deutschland
+    Frankfurt am Main, Deutschland
     """
 
     if not candidate or looks_like_bad_location(candidate):
@@ -34,14 +39,12 @@ def verify_german_location_with_google(candidate):
 
     api_key = config("GOOGLE_MAPS_SERVER_KEY", default="")
 
-    # Fallback if API key missing
     if not api_key:
         return candidate
 
     response = requests.get(
         "https://maps.googleapis.com/maps/api/geocode/json",
         params={
-            # Add Germany context for city-only lookups
             "address": f"{candidate}, Germany",
             "components": "country:DE",
             "language": "de",
@@ -56,7 +59,6 @@ def verify_german_location_with_google(candidate):
         return ""
 
     for result in data.get("results", []):
-
         components = result.get("address_components", [])
 
         postcode = ""
@@ -64,22 +66,22 @@ def verify_german_location_with_google(candidate):
         country = ""
 
         for component in components:
-
             types = component.get("types", [])
+            long_name = component.get("long_name", "")
 
-            if "postal_code" in types:
-                postcode = component.get("long_name", "")
+            if "postal_code" in types and re.fullmatch(r"\d{5}", long_name):
+                postcode = long_name
 
-            # locality OR postal_town
             if "locality" in types or "postal_town" in types:
-                locality = component.get("long_name", "")
+                locality = long_name
 
             if "country" in types:
-                country = component.get("long_name", "")
+                country = long_name
 
-        # Require ALL three
         if postcode and locality and country:
-
             return f"{postcode} {locality}, {country}"
+
+        if locality and country:
+            return f"{locality}, {country}"
 
     return ""
