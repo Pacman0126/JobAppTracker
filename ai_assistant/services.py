@@ -141,6 +141,7 @@ def extract_structured_job_data(text, url=""):
     locations = extract_multiple_german_locations(cleaned_text)
     contact_person = ""
     contact_email = ""
+    contact_phone = ""
 
     company_indicators = (
         "GmbH",
@@ -212,25 +213,55 @@ def extract_structured_job_data(text, url=""):
                     job_title = line.strip()
                     break
 
-    # Contact person after "Kontakt"
+    # Contact person detection
     contact_index = None
+
+    contact_markers = [
+        "kontakt",
+        "fragen? ihr ansprechpartner:",
+        "ihr ansprechpartner:",
+        "ansprechpartner:",
+        "ansprechpartnerin:",
+    ]
+
     for index, line in enumerate(lines):
-        if line.lower() == "kontakt":
+        lowered_line = line.lower().strip()
+
+        if lowered_line in contact_markers:
             contact_index = index
             break
 
     if contact_index is not None:
-        contact_window = lines[contact_index: contact_index + 20]
+        contact_window = lines[contact_index + 1: contact_index + 8]
 
         for line in contact_window:
-            if (
-                line.startswith("Frau ")
-                or line.startswith("Herr ")
-                or line.startswith("Ms. ")
-                or line.startswith("Mr. ")
-            ):
-                contact_person = line.strip()
+            candidate = line.strip()
+
+            if not candidate:
+                continue
+
+            if candidate.lower().startswith(("tel", "telefon", "e-mail", "email")):
+                continue
+
+            if re.search(r"\d", candidate):
+                continue
+
+            if len(candidate.split()) in [2, 3, 4]:
+                contact_person = candidate
                 break
+
+    # Fallback: inline German contact phrase
+    if not contact_person:
+        inline_person_match = re.search(
+            r"(?:Ansprechpartner|Ansprechpartnerin)\s*[:\-]?\s*"
+            r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
+            r"(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+){1,3})",
+            cleaned_text,
+            re.IGNORECASE,
+        )
+
+        if inline_person_match:
+            contact_person = inline_person_match.group(1).strip()
 
     # Email detection
     contact_email_match = re.search(
@@ -240,6 +271,16 @@ def extract_structured_job_data(text, url=""):
 
     if contact_email_match:
         contact_email = contact_email_match.group(0)
+
+    # Phone detection
+    contact_phone_match = re.search(
+        r"(?:Telefon|Tel\.?|Phone)\s*[:\-]?\s*(\+?\d[\d\s()/.-]{6,})",
+        cleaned_text,
+        re.IGNORECASE,
+    )
+
+    if contact_phone_match:
+        contact_phone = contact_phone_match.group(1).strip()
 
     application_method = "job_board"
     lower_text = cleaned_text.lower()
@@ -270,6 +311,7 @@ def extract_structured_job_data(text, url=""):
         "application_method": application_method,
         "contact_person": contact_person,
         "contact_email": contact_email,
+        "contact_phone": contact_phone,
         "job_url": url,
         "job_description": cleaned_text[:5000],
     }

@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import Company
 from .models import JobApplication
+from .models import ApplicationDraft
 
 
 @admin.register(Company)
@@ -42,4 +43,19 @@ class JobApplicationAdmin(admin.ModelAdmin):
         "status",
         "date_applied",
         "created_at",
+    )
+
+
+@admin.register(ApplicationDraft)
+class ApplicationDraftAdmin(admin.ModelAdmin):
+    list_display = (
+        "application",
+        "selected_cv",
+        "updated_at",
+    )
+    search_fields = (
+        "application__job_title",
+        "application__company__name",
+        "anschreiben_text",
+        "email_text",
     )

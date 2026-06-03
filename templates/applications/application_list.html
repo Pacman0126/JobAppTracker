@@ -26,7 +26,11 @@
 
                     <div class="col-4">
                         <strong>{% trans "Job Title" %}</strong>
-                        <div class="fw-bold">{{ application.job_title }}</div>
+                    <div class="fw-bold">
+                        <a href="{% url 'applications:application_detail' application.pk %}">
+                            {{ application.job_title }}
+                        </a>
+                    </div>
                         {% if application.job_url %}
                             <a href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer" class="small">
                                 {% trans "Job Link" %}
@@ -117,8 +121,11 @@
             
                 <div class="card shadow-sm mb-3">
                     <div class="card-body">
-                        <h2 class="h5">{{ application.job_title }}</h2>
-
+                        <h2 class="h5">
+                            <a href="{% url 'applications:application_detail' application.pk %}">
+                                {{ application.job_title }}
+                            </a>
+                        </h2>
                         <p class="mb-1">
                             <strong>{% trans "Company" %}:</strong>
                             {{ application.company.name }}

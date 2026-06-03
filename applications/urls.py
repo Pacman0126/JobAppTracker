@@ -16,4 +16,9 @@ urlpatterns = [
         views.application_create,
         name="application_create",
     ),
+    path(
+        "<int:pk>/",
+        views.application_detail,
+        name="application_detail",
+    ),
 ]

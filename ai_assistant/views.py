@@ -131,6 +131,7 @@ def use_extracted_job_data(request):
     query_params["company_website"] = request.POST.get("company_website", "")
     query_params["contact_person"] = request.POST.get("contact_person", "")
     query_params["contact_email"] = request.POST.get("contact_email", "")
+    query_params["contact_phone"] = request.POST.get("contact_phone", "")
     query_params["job_title"] = request.POST.get("job_title", "")
     query_params["location"] = request.POST.get("location", "")
     query_params["source_website"] = request.POST.get("source_website", "")

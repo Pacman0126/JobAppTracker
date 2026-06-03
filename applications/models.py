@@ -67,7 +67,10 @@ class JobApplication(models.Model):
         default="job_board",
     )
 
-    job_url = models.URLField(blank=True)
+    job_url = models.URLField(
+        max_length=1000,
+        blank=True,
+    )
     job_description = models.TextField()
     date_found = models.DateField(null=True, blank=True)
     date_applied = models.DateField(null=True, blank=True)
@@ -91,3 +94,23 @@ class JobApplication(models.Model):
 
     def __str__(self):
         return f"{self.job_title} - {self.company.name}"
+
+
+class ApplicationDraft(models.Model):
+    application = models.OneToOneField(
+        JobApplication,
+        on_delete=models.CASCADE,
+        related_name="draft",
+    )
+    selected_cv = models.ForeignKey(
+        "documents.UserDocument",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cv_drafts",
+    )
+    anschreiben_text = models.TextField(blank=True)
+    email_text = models.TextField(blank=True)
+    match_notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
