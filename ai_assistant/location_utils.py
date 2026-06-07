@@ -22,20 +22,11 @@ def looks_like_bad_location(candidate):
 
 
 def verify_german_location_with_google(candidate):
-    """
-    Verify and normalize German locations.
-
-    If candidate has a real 5-digit postcode:
-    33415 Verl, Deutschland
-
-    If candidate is city-only:
-    Hannover, Deutschland
-    Münster, Deutschland
-    Frankfurt am Main, Deutschland
-    """
-
     if not candidate or looks_like_bad_location(candidate):
         return ""
+
+    original_candidate = candidate
+    candidate_lower = candidate.lower()
 
     api_key = config("GOOGLE_MAPS_SERVER_KEY", default="")
 
@@ -61,17 +52,6 @@ def verify_german_location_with_google(candidate):
         return ""
 
     for result in data.get("results", []):
-        result_types = result.get("types", [])
-
-        # Important:
-        # If user/parser gave only a city-like word, reject company branches,
-        # offices, shops, and POIs. This prevents KNDS -> Kleve.
-        if not has_postcode_input and any(
-            bad_type in result_types
-            for bad_type in ("establishment", "point_of_interest", "premise")
-        ):
-            continue
-
         components = result.get("address_components", [])
 
         postcode = ""
@@ -101,10 +81,21 @@ def verify_german_location_with_google(candidate):
             if "country" in types:
                 country = long_name
 
+        if not locality or not country:
+            continue
+
+        # Critical guard:
+        # If the input did not contain a postcode, the returned city must
+        # appear in the original candidate. This blocks KNDS -> Kleve.
+        if not has_postcode_input:
+            locality_lower = locality.lower()
+
+            if locality_lower not in candidate_lower:
+                continue
+
         if postcode and locality and country:
             return f"{postcode} {locality}, {country}"
 
-        if locality and country:
-            return f"{locality}, {country}"
+        return f"{locality}, {country}"
 
     return ""
