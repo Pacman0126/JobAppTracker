@@ -42,6 +42,8 @@ def verify_german_location_with_google(candidate):
     if not api_key:
         return candidate
 
+    has_postcode_input = bool(re.search(r"\b\d{5}\b", candidate))
+
     response = requests.get(
         "https://maps.googleapis.com/maps/api/geocode/json",
         params={
@@ -59,6 +61,17 @@ def verify_german_location_with_google(candidate):
         return ""
 
     for result in data.get("results", []):
+        result_types = result.get("types", [])
+
+        # Important:
+        # If user/parser gave only a city-like word, reject company branches,
+        # offices, shops, and POIs. This prevents KNDS -> Kleve.
+        if not has_postcode_input and any(
+            bad_type in result_types
+            for bad_type in ("establishment", "point_of_interest", "premise")
+        ):
+            continue
+
         components = result.get("address_components", [])
 
         postcode = ""
@@ -72,8 +85,18 @@ def verify_german_location_with_google(candidate):
             if "postal_code" in types and re.fullmatch(r"\d{5}", long_name):
                 postcode = long_name
 
-            if "locality" in types or "postal_town" in types:
-                locality = long_name
+            if any(
+                location_type in types
+                for location_type in (
+                    "locality",
+                    "postal_town",
+                    "administrative_area_level_3",
+                    "administrative_area_level_2",
+                    "sublocality",
+                )
+            ):
+                if not locality:
+                    locality = long_name
 
             if "country" in types:
                 country = long_name

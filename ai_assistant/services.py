@@ -6,6 +6,13 @@ import requests
 from bs4 import BeautifulSoup
 from .location_utils import verify_german_location_with_google
 
+from .parsing_utils import clean_company_name
+from .parsing_utils import clean_job_title
+from .parsing_utils import extract_company_candidate
+from .parsing_utils import extract_job_title_candidate
+from .parsing_utils import extract_location_candidates
+from .parsing_utils import normalize_whitespace
+
 
 def extract_text_from_url(url):
     headers = {
@@ -128,17 +135,27 @@ def extract_json_ld_job_data(soup):
 def extract_structured_job_data(text, url=""):
     source_website = detect_source_website(url) if url else ""
 
-    cleaned_text = re.sub(r"\s+", " ", text).strip()
+    cleaned_text = normalize_whitespace(text)
     lines = [
         line.strip()
         for line in text.splitlines()
         if line.strip()
     ]
 
-    company_name = ""
-    job_title = ""
-    location = extract_german_location(cleaned_text)
-    locations = extract_multiple_german_locations(cleaned_text)
+    company_name = extract_company_candidate(text)
+    job_title = extract_job_title_candidate(text)
+
+    location_candidates = extract_location_candidates(text)
+    locations = []
+
+    for candidate in location_candidates:
+        verified = verify_german_location_with_google(candidate)
+
+        if verified and verified not in locations:
+            locations.append(verified)
+
+    location = locations[0] if locations else ""
+
     contact_person = ""
     contact_email = ""
     contact_phone = ""
@@ -302,6 +319,9 @@ def extract_structured_job_data(text, url=""):
         if verified_location:
             location = verified_location
 
+    if not location and locations:
+        location = locations[0]
+
     return {
         "company_name": company_name,
         "job_title": job_title,
@@ -315,19 +335,6 @@ def extract_structured_job_data(text, url=""):
         "job_url": url,
         "job_description": cleaned_text[:5000],
     }
-
-
-def clean_job_title(title):
-    title = re.sub(r"-\s*job post", "", title, flags=re.IGNORECASE)
-    title = re.sub(r"\bm/w/d\b", "(m/w/d)", title)
-    title = re.sub(r"\s+", " ", title)
-    return title.strip()
-
-
-def clean_company_name(company_name):
-    company_name = re.sub(r"\s+", " ", company_name)
-    company_name = re.sub(r"\s+logo$", "", company_name, flags=re.IGNORECASE)
-    return company_name.strip()
 
 
 def extract_german_location(cleaned_text):
@@ -407,185 +414,16 @@ def extract_german_location(cleaned_text):
     return ""
 
 
-# def extract_multiple_german_locations(cleaned_text):
-#     verified_locations = []
-
-#     header_stop_markers = [
-#         "Stellenbeschreibung",
-#         "Tätigkeitsbereich",
-#         "Aufgaben",
-#         "Anforderungen",
-#         "Profil",
-#         "Wir bieten",
-#         "Kontakt",
-#         "Benefits",
-#         "Full job description",
-#         "Job Description",
-#     ]
-
-#     header_text = cleaned_text
-
-#     for marker in header_stop_markers:
-#         marker_index = header_text.lower().find(marker.lower())
-
-#         if marker_index != -1:
-#             header_text = header_text[:marker_index]
-#             break
-
-#     header_text = header_text[:3000]
-
-#     bad_candidate_words = {
-#         "vollzeit",
-#         "teilzeit",
-#         "festanstellung",
-#         "homeoffice",
-#         "gehalt",
-#         "benefits",
-#         "bewerbungen",
-#         "mitarbeiter",
-#         "stars",
-#         "tage",
-#         "job",
-#         "jobs",
-#         "stellenbeschreibung",
-#         "finden",
-#         "software",
-#         "entwickler",
-#         "finanz",
-#         "informatik",
-#     }
-
-#     def clean_city_candidate(candidate):
-#         candidate = candidate.strip(" .;:-")
-
-#         candidate = re.sub(
-#             r"^.*\b(GmbH\s*&\s*Co\.\s*KG|GmbH|AG|KG|SE|UG|OHG)\s+",
-#             "",
-#             candidate,
-#             flags=re.IGNORECASE,
-#         )
-
-#         candidate = re.split(
-#             r"\b("
-#             r"Feste Anstellung|Festanstellung|Vollzeit|Teilzeit|"
-#             r"Homeoffice|Erschienen|Gehalt|Benefits|Job|Jobs"
-#             r")\b",
-#             candidate,
-#             flags=re.IGNORECASE,
-#         )[0]
-
-#         return candidate.strip(" .;:-")
-
-#     location_phrases = []
-
-#     # Pattern 1:
-#     # Standort Hannover, Münster oder Frankfurt am Main
-#     targeted_patterns = [
-#         r"Standort\s+(.{3,160}?)(?:\s+einen|\s+eine|\s+zum|\s+zur|\.|$)",
-#         r"Arbeitsort\s+(.{3,160}?)(?:\s+einen|\s+eine|\s+zum|\s+zur|\.|$)",
-#     ]
-
-#     for pattern in targeted_patterns:
-#         for match in re.findall(pattern, header_text, flags=re.IGNORECASE):
-#             location_phrases.append(match)
-
-#     # Pattern 2:
-#     # Company name + Hannover, Münster, Frankfurt am Main + Feste Anstellung
-#     company_location_match = re.search(
-#         r"(?:GmbH\s*&\s*Co\.\s*KG|GmbH|AG|KG|SE|UG|OHG)\s+"
-#         r"(.{3,180}?)\s+"
-#         r"(?:Feste Anstellung|Festanstellung|Vollzeit|Teilzeit|Homeoffice)",
-#         header_text,
-#         flags=re.IGNORECASE,
-#     )
-
-#     if company_location_match:
-#         location_phrases.append(company_location_match.group(1))
-
-#     # Pattern 3:
-#     # Generic comma-separated city group
-#     comma_groups = re.findall(
-#         r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\- ]+"
-#         r"(?:,\s*[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\- ]+)+)",
-#         header_text,
-#     )
-
-#     location_phrases.extend(comma_groups)
-
-#     city_name_pattern = re.compile(
-#         r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
-#         r"(?:\s+(?:am|an|im|in|der|den|dem|"
-#         r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,3}\b"
-#     )
-
-#     for phrase in location_phrases:
-#         city_candidates = []
-
-#         for part in re.split(r",|\s+oder\s+", phrase):
-#             part = clean_city_candidate(part)
-
-#             match = city_name_pattern.search(part)
-
-#             if match:
-#                 city_candidates.append(match.group(0))
-
-#         for city_candidate in city_candidates:
-#             lowered = city_candidate.lower()
-
-#     # Pattern 4:
-#     # Standort Hannover, Münster oder Frankfurt am Main
-#     oder_location_match = re.search(
-#         r"Standort\s+(.{3,120}?)\s+(?:einen|eine|zum|zur|als|in Vollzeit|Vollzeit|Teilzeit)",
-#         header_text,
-#         flags=re.IGNORECASE,
-#     )
-
-#     if oder_location_match:
-#         phrase = oder_location_match.group(1)
-
-#         city_candidates = re.split(r",|\s+oder\s+", phrase)
-
-#         for city_candidate in city_candidates:
-#             city_candidate = clean_city_candidate(city_candidate)
-
-#             if not city_candidate:
-#                 continue
-
-#             verified = verify_german_location_with_google(city_candidate)
-
-#             if verified and verified not in verified_locations:
-#                 verified_locations.append(verified)
-
-#     print("\n=== LOCATION PHRASES ===")
-#     for phrase in location_phrases:
-#         print(phrase)
-
-#     print("\n=== VERIFIED LOCATIONS ===")
-#     for loc in verified_locations:
-#         print(loc)
-
-#     if verified_locations:
-#         return verified_locations
-
-#     # Postal-code fallback
-#     postal_candidates = re.findall(
-#         r"\b(\d{5})\s+"
-#         r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
-#         r"(?:\s+(?:am|an|im|in|der|den|dem|"
-#         r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,4})",
-#         header_text,
-#     )
-
-#     for postcode, city in postal_candidates:
-#         candidate = f"{postcode} {city}".strip()
-#         verified = verify_german_location_with_google(candidate)
-
-#         if verified and verified not in verified_locations:
-#             verified_locations.append(verified)
-
-#     return verified_locations
 def extract_multiple_german_locations(cleaned_text):
     verified_locations = []
+
+    def location_key(location):
+        location = location.lower()
+        location = re.sub(r"\b\d{5}\b", "", location)
+        location = location.replace("deutschland", "")
+        location = re.sub(r"[^a-zäöüß ]", " ", location)
+        location = re.sub(r"\s+", " ", location).strip()
+        return location
 
     header_stop_markers = [
         "Stellenbeschreibung",
@@ -604,7 +442,6 @@ def extract_multiple_german_locations(cleaned_text):
 
     for marker in header_stop_markers:
         marker_index = header_text.lower().find(marker.lower())
-
         if marker_index != -1:
             header_text = header_text[:marker_index]
             break
@@ -612,106 +449,45 @@ def extract_multiple_german_locations(cleaned_text):
     header_text = header_text[:3000]
 
     bad_candidate_words = {
-        "vollzeit",
-        "teilzeit",
-        "festanstellung",
-        "homeoffice",
-        "gehalt",
-        "benefits",
-        "bewerbungen",
-        "mitarbeiter",
-        "stars",
-        "tage",
-        "job",
-        "jobs",
-        "stellenbeschreibung",
-        "finden",
-        "software",
-        "entwickler",
-        "finanz",
-        "informatik",
+        "vollzeit", "teilzeit", "festanstellung", "homeoffice",
+        "gehalt", "benefits", "bewerbungen", "mitarbeiter",
+        "stars", "tage", "job", "jobs", "stellenbeschreibung",
+        "finden", "software", "entwickler", "informatik",
+        "elektrotechnik", "feinmechanik", "optik", "logo",
+        "passt", "weniger", "hervorragend", "erschienen",
+        "woche", "jahr", "geschätzt",
     }
 
-    def clean_city_candidate(candidate):
-        candidate = candidate.strip(" .;:-")
+    def add_verified(candidate):
+        candidate = re.sub(r"\s+", " ", candidate or "").strip(" .,:;()-")
+        if not candidate:
+            return
 
-        candidate = re.sub(
-            r"^.*\b(GmbH\s*&\s*Co\.\s*KG|GmbH|AG|KG|SE|UG|OHG)\s+",
-            "",
-            candidate,
-            flags=re.IGNORECASE,
-        )
+        if len(candidate) > 80:
+            return
 
-        candidate = re.split(
-            r"\b("
-            r"Feste Anstellung|Festanstellung|Vollzeit|Teilzeit|"
-            r"Homeoffice|Erschienen|Gehalt|Benefits|Job|Jobs|finden"
-            r")\b",
-            candidate,
-            flags=re.IGNORECASE,
-        )[0]
+        lowered = candidate.lower()
 
-        return candidate.strip(" .;:-")
+        if any(word in lowered for word in bad_candidate_words):
+            return
 
-    location_phrases = []
+        # If candidate is a simple city name, do not combine it with company name.
+        # Google should verify the city itself, not company branches.
+        if not re.search(r"\d{5}", candidate):
+            candidate = f"{candidate}, Deutschland"
 
-    targeted_patterns = [
-        r"Standort\s+(.{3,180}?)(?:\s+einen|\s+eine|\s+zum|\s+zur|\s+als|\s+in Vollzeit|\s+Vollzeit|\s+Teilzeit|\.|$)",
-        r"Arbeitsort\s+(.{3,180}?)(?:\s+einen|\s+eine|\s+zum|\s+zur|\s+als|\s+in Vollzeit|\s+Vollzeit|\s+Teilzeit|\.|$)",
-    ]
+        verified = verify_german_location_with_google(candidate)
 
-    for pattern in targeted_patterns:
-        for match in re.findall(pattern, header_text, flags=re.IGNORECASE):
-            location_phrases.append(match)
+        verified_key = location_key(verified)
+        existing_keys = {
+            location_key(existing)
+            for existing in verified_locations
+        }
 
-    company_location_match = re.search(
-        r"(?:GmbH\s*&\s*Co\.\s*KG|GmbH|AG|KG|SE|UG|OHG)\s+"
-        r"(.{3,180}?)\s+"
-        r"(?:Feste Anstellung|Festanstellung|Vollzeit|Teilzeit|Homeoffice)",
-        header_text,
-        flags=re.IGNORECASE,
-    )
+        if verified_key not in existing_keys:
+            verified_locations.append(verified)
 
-    if company_location_match:
-        location_phrases.append(company_location_match.group(1))
-
-    comma_groups = re.findall(
-        r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\- ]+"
-        r"(?:,\s*[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\- ]+)+)",
-        header_text,
-    )
-
-    location_phrases.extend(comma_groups)
-
-    city_name_pattern = re.compile(
-        r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
-        r"(?:\s+(?:am|an|im|in|der|den|dem|"
-        r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,3}\b"
-    )
-
-    for phrase in location_phrases:
-        for part in re.split(r",|\s+oder\s+", phrase):
-            part = clean_city_candidate(part)
-
-            match = city_name_pattern.search(part)
-
-            if not match:
-                continue
-
-            city_candidate = match.group(0)
-            lowered = city_candidate.lower()
-
-            if any(word in lowered for word in bad_candidate_words):
-                continue
-
-            verified = verify_german_location_with_google(city_candidate)
-
-            if verified and verified not in verified_locations:
-                verified_locations.append(verified)
-
-    if verified_locations:
-        return verified_locations
-
+    # 1. Postal-code candidates first.
     postal_candidates = re.findall(
         r"\b(\d{5})\s+"
         r"([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+"
@@ -721,10 +497,64 @@ def extract_multiple_german_locations(cleaned_text):
     )
 
     for postcode, city in postal_candidates:
-        candidate = f"{postcode} {city}".strip()
-        verified = verify_german_location_with_google(candidate)
+        add_verified(f"{postcode} {city}")
 
-        if verified and verified not in verified_locations:
-            verified_locations.append(verified)
+    if verified_locations:
+        return verified_locations
+
+    # 2. Explicit location phrases.
+    targeted_patterns = [
+        r"(?:Standort|Arbeitsort|Einsatzort)\s+(.{3,180}?)(?:\s+einen|\s+eine|\s+zum|\s+zur|\s+als|\s+in Vollzeit|\s+Vollzeit|\s+Teilzeit|\.|$)",
+        r"(?:in|am Standort|für den Standort)\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+(?:\s+(?:am|an|im|in|der|den|dem|[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]+)){0,3})",
+    ]
+
+    for pattern in targeted_patterns:
+        for phrase in re.findall(pattern, header_text, flags=re.IGNORECASE):
+            for part in re.split(r",|\s+oder\s+|\s+und\s+", phrase):
+                add_verified(part)
+
+    if verified_locations:
+        return verified_locations
+
+    # 3. Deep fallback: scan short standalone title/header lines.
+    # This catches city-only lines like "Konstanz".
+    lines = [
+        line.strip()
+        for line in cleaned_text.splitlines()
+        if line.strip()
+    ]
+
+    for line in lines[:50]:
+        candidate = line.strip()
+
+        if len(candidate) > 80:
+            continue
+
+        if re.search(r"\d", candidate):
+            continue
+
+        if candidate.endswith((".", ":", ";")):
+            continue
+
+        word_count = len(candidate.split())
+
+        if word_count > 4:
+            continue
+
+        add_verified(candidate)
+
+    if verified_locations:
+        return verified_locations
+
+    # 4. Final deep fallback for flattened text from URL scraping.
+    city_like_candidates = re.findall(
+        r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]{3,}"
+        r"(?:\s+(?:am|an|im|in|der|den|dem|"
+        r"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]{3,})){0,2}\b",
+        header_text,
+    )
+
+    for candidate in city_like_candidates[:80]:
+        add_verified(candidate)
 
     return verified_locations

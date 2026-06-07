@@ -1,3 +1,4 @@
+import re
 from multiprocessing import context
 from django.contrib.auth.decorators import login_required
 from django.http import QueryDict
@@ -125,25 +126,60 @@ def analyze_job_posting(request):
 
 @login_required
 def use_extracted_job_data(request):
+    def clean_param(value, max_length=None):
+        value = re.sub(r"\s+", " ", value or "").strip()
+
+        if max_length and len(value) > max_length:
+            value = value[:max_length].rsplit(" ", 1)[0].strip()
+
+        return value
+
     query_params = QueryDict(mutable=True)
 
-    query_params["company_name"] = request.POST.get("company_name", "")
-    query_params["company_website"] = request.POST.get("company_website", "")
-    query_params["contact_person"] = request.POST.get("contact_person", "")
-    query_params["contact_email"] = request.POST.get("contact_email", "")
-    query_params["contact_phone"] = request.POST.get("contact_phone", "")
-    query_params["job_title"] = request.POST.get("job_title", "")
-    query_params["location"] = request.POST.get("location", "")
-    query_params["source_website"] = request.POST.get("source_website", "")
-    query_params["application_method"] = request.POST.get(
-        "application_method",
-        "",
+    query_params["company_name"] = clean_param(
+        request.POST.get("company_name", ""),
+        255,
     )
-    query_params["job_url"] = request.POST.get("job_url", "")
+    query_params["company_website"] = clean_param(
+        request.POST.get("company_website", ""),
+        500,
+    )
+    query_params["contact_person"] = clean_param(
+        request.POST.get("contact_person", ""),
+        255,
+    )
+    query_params["contact_email"] = clean_param(
+        request.POST.get("contact_email", ""),
+        255,
+    )
+    query_params["contact_phone"] = clean_param(
+        request.POST.get("contact_phone", ""),
+        100,
+    )
+    query_params["job_title"] = clean_param(
+        request.POST.get("job_title", ""),
+        255,
+    )
+    query_params["location"] = clean_param(
+        request.POST.get("location", ""),
+        255,
+    )
+    query_params["source_website"] = clean_param(
+        request.POST.get("source_website", ""),
+        100,
+    )
+    query_params["application_method"] = clean_param(
+        request.POST.get("application_method", ""),
+        50,
+    )
+    query_params["job_url"] = clean_param(
+        request.POST.get("job_url", ""),
+        1000,
+    )
     query_params["job_description"] = request.POST.get(
         "job_description",
         "",
-    )
+    )[:5000]
 
     return redirect(
         f"/en/applications/new/?{query_params.urlencode()}"
