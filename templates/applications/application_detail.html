@@ -1,36 +1,131 @@
 {% extends "base.html" %}
 {% load i18n %}
 
+{% block title %}
+    {{ application.job_title }} | {% trans "BewerbungsManager" %}
+{% endblock %}
+
 {% block content %}
-<h1>{{ application.job_title }}</h1>
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h1>{{ application.job_title }}</h1>
 
+        <p class="mb-0">
+            <strong>{{ application.company.name }}</strong><br>
+            {{ application.location|default:"-" }}
+        </p>
+    </div>
+
+    <a href="{% url 'applications:application_list' %}" class="btn btn-outline-secondary">
+        {% trans "Back to Applications" %}
+    </a>
+</div>
+
+<hr>
+
+<h2 class="h4">{% trans "Application Contact" %}</h2>
 <p>
-    <strong>{{ application.company.name }}</strong><br>
-    {{ application.location }}
+    {% trans "Contact person" %}: {{ application.contact_person_snapshot|default:"-" }}<br>
+    {% trans "Email" %}: {{ application.contact_email_snapshot|default:"-" }}<br>
+    {% trans "Phone" %}: {{ application.contact_phone_snapshot|default:"-" }}
 </p>
 
 <hr>
 
-<h2 class="h4">Application Contact</h2>
-<p>
-    Contact person: {{ application.contact_person_snapshot|default:"-" }}<br>
-    Email: {{ application.contact_email_snapshot|default:"-" }}<br>
-    Phone: {{ application.contact_phone_snapshot|default:"-" }}
-</p>
+<h2 class="h4">{% trans "Submitted Documents" %}</h2>
+
+{% if application.application_documents.all %}
+    <ul class="list-group mb-4">
+        {% for link in application.application_documents.all %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    <strong>{{ link.document.title }}</strong>
+                    <span class="text-muted">
+                        ({{ link.document.get_document_type_display }})
+                    </span>
+                </span>
+
+                <a
+                    href="{% url 'documents:document_download' link.document.pk %}"
+                    class="btn btn-sm btn-outline-secondary"
+                >
+                    {% trans "Download" %}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="text-muted">
+        {% trans "No submitted documents are linked to this application." %}
+    </p>
+{% endif %}
 
 <hr>
 
-<h2 class="h4">Anschreiben Draft</h2>
+<h2 class="h4">{% trans "Generate Anschreiben" %}</h2>
+
+<form
+    method="post"
+    action="{% url 'applications:generate_anschreiben' application.pk %}"
+    class="mb-4"
+>
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label for="selected_cv" class="form-label">
+            {% trans "Select exactly one CV" %}
+        </label>
+
+        <select
+            id="selected_cv"
+            name="selected_cv"
+            class="form-select"
+            required
+        >
+            <option value="">
+                {% trans "Select one CV..." %}
+            </option>
+
+            {% for link in application.application_documents.all %}
+                {% if link.document.document_type == "cv" %}
+                    <option
+                        value="{{ link.document.id }}"
+                        {% if draft.selected_cv and draft.selected_cv.id == link.document.id %}selected{% endif %}
+                    >
+                        {{ link.document.title }}
+                    </option>
+                {% endif %}
+            {% endfor %}
+        </select>
+
+        <div class="form-text">
+            {% trans "Only CV documents already linked to this application are available here." %}
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        {% trans "Generate Anschreiben" %}
+    </button>
+</form>
+
+<hr>
+
+<h2 class="h4">{% trans "Anschreiben Draft" %}</h2>
 
 {% if draft.anschreiben_text %}
-    <div class="border rounded p-3 bg-light">
+    <div class="border rounded p-3 bg-light mb-3">
         {{ draft.anschreiben_text|linebreaks }}
     </div>
 {% else %}
-    <p class="text-muted">No Anschreiben has been generated yet.</p>
+    <p class="text-muted">
+        {% trans "No Anschreiben has been generated yet." %}
+    </p>
 {% endif %}
 
-<a href="#" class="btn btn-primary disabled">
-    Generate Anschreiben
-</a>
+{% if draft.match_notes %}
+    <h3 class="h5">{% trans "Match Notes" %}</h3>
+    <div class="border rounded p-3 bg-light">
+        {{ draft.match_notes|linebreaks }}
+    </div>
+{% endif %}
 {% endblock %}

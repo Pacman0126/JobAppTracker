@@ -26,11 +26,12 @@
 
                     <div class="col-4">
                         <strong>{% trans "Job Title" %}</strong>
-                    <div class="fw-bold">
-                        <a href="{% url 'applications:application_detail' application.pk %}">
-                            {{ application.job_title }}
-                        </a>
-                    </div>
+                        <div class="fw-bold">
+                            <a href="{% url 'applications:application_detail' application.pk %}">
+                                {{ application.job_title }}
+                            </a>
+                        </div>
+
                         {% if application.job_url %}
                             <a href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer" class="small">
                                 {% trans "Job Link" %}
@@ -56,18 +57,26 @@
 
                 <hr class="my-2">
 
-                <div class="d-flex flex-wrap gap-4 small">
+                <div class="d-flex flex-wrap gap-4 small align-items-center">
                     <div>
                         <strong>{% trans "Contact" %}:</strong>
-                        {% if application.company.contact_person %}
+                        {% if application.contact_person_snapshot %}
+                            {{ application.contact_person_snapshot }}
+                        {% elif application.company.contact_person %}
                             {{ application.company.contact_person }}
                         {% endif %}
-                        {% if application.company.contact_email %}
+
+                        {% if application.contact_email_snapshot %}
+                            <a href="mailto:{{ application.contact_email_snapshot }}">
+                                {{ application.contact_email_snapshot }}
+                            </a>
+                        {% elif application.company.contact_email %}
                             <a href="mailto:{{ application.company.contact_email }}">
                                 {{ application.company.contact_email }}
                             </a>
                         {% endif %}
-                        {% if not application.company.contact_person and not application.company.contact_email %}
+
+                        {% if not application.contact_person_snapshot and not application.company.contact_person and not application.contact_email_snapshot and not application.company.contact_email %}
                             <span class="text-muted">-</span>
                         {% endif %}
                     </div>
@@ -111,6 +120,34 @@
                             -
                         {% endif %}
                     </div>
+
+                    <div>
+                        <strong>{% trans "Progress" %}:</strong>
+
+                        {% if application.draft.anschreiben_text %}
+                            <span class="badge bg-success">
+                                {% trans "Anschreiben Ready" %}
+                            </span>
+
+                            <a
+                                href="{% url 'applications:application_detail' application.pk %}"
+                                class="btn btn-sm btn-outline-success ms-2"
+                            >
+                                {% trans "View Draft" %}
+                            </a>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">
+                                {% trans "Draft" %}
+                            </span>
+
+                            <a
+                                href="{% url 'applications:application_detail' application.pk %}"
+                                class="btn btn-sm btn-primary ms-2"
+                            >
+                                {% trans "Complete Application" %}
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         {% endfor %}
@@ -118,91 +155,123 @@
 
     <div class="d-xl-none">
         {% for application in applications %}
-            
-                <div class="card shadow-sm mb-3">
-                    <div class="card-body">
-                        <h2 class="h5">
-                            <a href="{% url 'applications:application_detail' application.pk %}">
-                                {{ application.job_title }}
-                            </a>
-                        </h2>
-                        <p class="mb-1">
-                            <strong>{% trans "Company" %}:</strong>
-                            {{ application.company.name }}
-                        </p>
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <h2 class="h5">
+                        <a href="{% url 'applications:application_detail' application.pk %}">
+                            {{ application.job_title }}
+                        </a>
+                    </h2>
 
-                        <p class="mb-1">
-                            <strong>{% trans "Location" %}:</strong>
-                            {{ application.location|default:"-" }}
-                        </p>
+                    <p class="mb-1">
+                        <strong>{% trans "Company" %}:</strong>
+                        {{ application.company.name }}
+                    </p>
 
-                        <p class="mb-1">
-                            <strong>{% trans "Source" %}:</strong>
-                            {{ application.source_website|default:"-" }}
-                        </p>
+                    <p class="mb-1">
+                        <strong>{% trans "Location" %}:</strong>
+                        {{ application.location|default:"-" }}
+                    </p>
 
-                        <p class="mb-1">
-                            <strong>{% trans "Application Type" %}:</strong>
-                            {{ application.get_application_method_display }}
-                        </p>
+                    <p class="mb-1">
+                        <strong>{% trans "Source" %}:</strong>
+                        {{ application.source_website|default:"-" }}
+                    </p>
 
-                        <p class="mb-1">
-                            <strong>{% trans "Contact" %}:</strong>
-                            {% if application.company.contact_person %}
-                                {{ application.company.contact_person }}
-                            {% else %}
-                                -
-                            {% endif %}
-                            {% if application.company.contact_email %}
-                                <br>
-                                <a href="mailto:{{ application.company.contact_email }}">
-                                    {{ application.company.contact_email }}
-                                </a>
-                            {% endif %}
-                        </p>
+                    <p class="mb-1">
+                        <strong>{% trans "Application Type" %}:</strong>
+                        {{ application.get_application_method_display }}
+                    </p>
 
-                        <p class="mb-1">
-                            <strong>{% trans "Status" %}:</strong>
-                            {{ application.get_status_display }}
-                        </p>
-
-                        <p class="mb-1">
-                            <strong>{% trans "Date Applied" %}:</strong>
-                            {% if application.date_applied %}
-                                {{ application.date_applied|date:"d.m.Y" }}
-                            {% else %}
-                                {% trans "Not submitted" %}
-                            {% endif %}
-                        </p>
-
-                        <p class="mb-3">
-                            <strong>{% trans "Days Elapsed" %}:</strong>
-                            {% if application.days_since_applied is not None %}
-                                {{ application.days_since_applied }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </p>
-
-                        {% if application.job_url %}
-                            <a href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
-                                {% trans "Job Link" %}
-                            </a>
+                    <p class="mb-1">
+                        <strong>{% trans "Contact" %}:</strong>
+                        {% if application.contact_person_snapshot %}
+                            {{ application.contact_person_snapshot }}
+                        {% elif application.company.contact_person %}
+                            {{ application.company.contact_person }}
+                        {% else %}
+                            -
                         {% endif %}
 
-                        {% if application.application_documents.all %}
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-outline-primary"
-                                data-bs-toggle="modal"
-                                data-bs-target="#documentsModal{{ application.id }}"
-                            >
-                                {% trans "View Documents" %}
-                            </button>
+                        {% if application.contact_email_snapshot %}
+                            <br>
+                            <a href="mailto:{{ application.contact_email_snapshot }}">
+                                {{ application.contact_email_snapshot }}
+                            </a>
+                        {% elif application.company.contact_email %}
+                            <br>
+                            <a href="mailto:{{ application.company.contact_email }}">
+                                {{ application.company.contact_email }}
+                            </a>
                         {% endif %}
-                    </div>
+                    </p>
+
+                    <p class="mb-1">
+                        <strong>{% trans "Status" %}:</strong>
+                        {{ application.get_status_display }}
+                    </p>
+
+                    <p class="mb-1">
+                        <strong>{% trans "Date Applied" %}:</strong>
+                        {% if application.date_applied %}
+                            {{ application.date_applied|date:"d.m.Y" }}
+                        {% else %}
+                            {% trans "Not submitted" %}
+                        {% endif %}
+                    </p>
+
+                    <p class="mb-3">
+                        <strong>{% trans "Days Elapsed" %}:</strong>
+                        {% if application.days_since_applied is not None %}
+                            {{ application.days_since_applied }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </p>
+
+                    <p class="mb-3">
+                        <strong>{% trans "Progress" %}:</strong>
+
+                        {% if application.draft.anschreiben_text %}
+                            <span class="badge bg-success">
+                                {% trans "Anschreiben Ready" %}
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">
+                                {% trans "Draft" %}
+                            </span>
+                        {% endif %}
+                    </p>
+
+                    <a
+                        href="{% url 'applications:application_detail' application.pk %}"
+                        class="btn btn-sm btn-primary"
+                    >
+                        {% if application.draft.anschreiben_text %}
+                            {% trans "View Draft" %}
+                        {% else %}
+                            {% trans "Complete Application" %}
+                        {% endif %}
+                    </a>
+
+                    {% if application.job_url %}
+                        <a href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+                            {% trans "Job Link" %}
+                        </a>
+                    {% endif %}
+
+                    {% if application.application_documents.all %}
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#documentsModal{{ application.id }}"
+                        >
+                            {% trans "View Documents" %}
+                        </button>
+                    {% endif %}
                 </div>
-        
+            </div>
         {% endfor %}
     </div>
 

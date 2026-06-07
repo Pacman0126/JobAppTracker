@@ -21,4 +21,9 @@ urlpatterns = [
         views.application_detail,
         name="application_detail",
     ),
+    path(
+        "<int:pk>/generate-anschreiben/",
+        views.generate_anschreiben,
+        name="generate_anschreiben",
+    ),
 ]

@@ -16,7 +16,12 @@ from .models import ApplicationDraft
 def application_list(request):
     applications = JobApplication.objects.filter(
         user=request.user,
-    ).select_related("company").order_by("-created_at")
+    ).select_related(
+        "company",
+        "draft",
+    ).prefetch_related(
+        "application_documents__document",
+    ).order_by("-created_at")
 
     return render(
         request,
@@ -152,3 +157,71 @@ def application_detail(request, pk):
             "draft": draft,
         },
     )
+
+
+@login_required
+def generate_anschreiben(request, pk):
+    application = JobApplication.objects.select_related(
+        "company",
+    ).get(
+        pk=pk,
+        user=request.user,
+    )
+
+    if request.method != "POST":
+        return redirect("applications:application_detail", pk=pk)
+
+    selected_cv_id = request.POST.get("selected_cv")
+
+    if not selected_cv_id:
+        messages.error(
+            request,
+            "Please select exactly one CV before generating the Anschreiben.",
+        )
+        return redirect("applications:application_detail", pk=pk)
+
+    selected_cv = UserDocument.objects.filter(
+        id=selected_cv_id,
+        user=request.user,
+        document_type="cv",
+    ).first()
+
+    if not selected_cv:
+        messages.error(
+            request,
+            "Selected CV could not be found.",
+        )
+        return redirect("applications:application_detail", pk=pk)
+
+    draft, _created = ApplicationDraft.objects.get_or_create(
+        application=application,
+    )
+
+    contact_person = application.contact_person_snapshot.strip()
+
+    if contact_person:
+        salutation = f"Sehr geehrte/r {contact_person},"
+    else:
+        salutation = "Sehr geehrte Damen und Herren,"
+
+    draft.selected_cv = selected_cv
+    draft.anschreiben_text = f"""{salutation}
+
+hiermit bewerbe ich mich auf die Position als {application.job_title} bei {application.company.name}.
+
+Auf Grundlage meines ausgewählten Lebenslaufs ({selected_cv.title}) und der Stellenbeschreibung werde ich im nächsten Schritt ein gezieltes Anschreiben generieren.
+
+Mit freundlichen Grüßen
+"""
+    draft.match_notes = (
+        "Prototype draft generated. AI-based CV/job-description comparison "
+        "will be added in the next phase."
+    )
+    draft.save()
+
+    messages.success(
+        request,
+        "Anschreiben draft generated.",
+    )
+
+    return redirect("applications:application_detail", pk=pk)

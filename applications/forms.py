@@ -1,5 +1,5 @@
 from django import forms
-
+from django.utils import timezone
 from documents.models import UserDocument
 
 from .models import JobApplication
@@ -67,6 +67,13 @@ class JobApplicationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+
+        self.fields["date_applied"].required = True
+
+        if not self.initial.get("date_applied"):
+            self.fields["date_applied"].initial = (
+                timezone.localdate()
+            )
 
         if user:
             self.fields["submitted_documents"].queryset = (
