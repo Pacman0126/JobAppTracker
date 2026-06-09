@@ -70,7 +70,7 @@
 
             {% if structured_data %}
 
-                {% if missing_fields %}
+                {% comment %} {% if missing_fields %}
                     <div class="alert alert-warning mb-4">
                         <strong>{% trans "Some fields could not be detected:" %}</strong>
 
@@ -84,7 +84,55 @@
                             {% trans "Paste additional job text or contact details to improve extraction." %}
                         </div>
                     </div>
-                {% endif %}
+                {% endif %} {% endcomment %}
+
+                {% if parser_report %}
+                    <div class="card border-{{ parser_report.quality_class }} mb-4">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <strong>{% trans "AI Analysis Summary" %}</strong>
+                            <span class="badge bg-{{ parser_report.quality_class }}">
+                                {{ parser_report.quality_label }} — {{ parser_report.percent }}%
+                            </span>
+                        </div>
+
+                        <div class="card-body">
+                            <p class="mb-2">
+                                {{ parser_report.summary }}
+                            </p>
+
+                            <p class="mb-3">
+                                <strong>{% trans "Recommendation" %}:</strong>
+                                {{ parser_report.recommendation }}
+                            </p>
+
+                            <h3 class="h6">{% trans "Essential Information" %}</h3>
+                            <div class="row mb-3">
+                                {% for check in parser_report.critical_checks %}
+                                    <div class="col-md-6 mb-2">
+                                        {% if check.success %}
+                                            <span class="text-success">✓</span>
+                                        {% else %}
+                                            <span class="text-danger">⚠</span>
+                                        {% endif %}
+                                        <strong>{{ check.field }}:</strong>
+                                        {{ check.message }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <h3 class="h6">{% trans "Additional Information" %}</h3>
+                            <div class="row">
+                                {% for check in parser_report.info_checks %}
+                                    <div class="col-md-6 mb-2">
+                                        <span class="text-info">ℹ</span>
+                                        <strong>{{ check.field }}:</strong>
+                                        {{ check.message }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}           
 
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h2 class="h5 mb-0">

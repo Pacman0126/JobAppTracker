@@ -41,6 +41,7 @@ def analyze_job_posting(request):
             structured_data = extract_structured_job_data(
                 result["text"],
                 url=url,
+                json_ld_data=result.get("json_ld_data", {}),
             )
 
         json_ld_data = result.get("json_ld_data", {})
@@ -70,6 +71,7 @@ def analyze_job_posting(request):
 
         context["result"] = result
         context["structured_data"] = structured_data
+        context["parser_report"] = structured_data.get("parser_report", {})
         context["debug_data"] = structured_data.get("debug", {})
         context["job_url"] = url
         context["pasted_job_text"] = pasted_text

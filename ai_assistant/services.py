@@ -5,16 +5,9 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 
-from .location_utils import deduplicate_locations
-from .location_utils import verify_german_location_with_google
-from .parsing_utils import clean_company_name
-from .parsing_utils import clean_job_title
-from .parsing_utils import detect_application_method
-from .parsing_utils import extract_company_candidate
-from .parsing_utils import extract_contact_data
-from .parsing_utils import extract_job_title_candidate
-from .parsing_utils import extract_location_candidates
+from .parser_pipeline import build_parser_result
 from .parsing_utils import normalize_whitespace
+from .parser_diagnostics import build_parser_report
 
 
 def extract_text_from_url(url):
@@ -122,7 +115,7 @@ def extract_json_ld_job_data(soup):
                 address.get("addressLocality", ""),
             ]
 
-            job_data = {
+            return {
                 "company_name": hiring_org.get("name", ""),
                 "job_title": item.get("title", ""),
                 "location": " ".join(
@@ -131,64 +124,59 @@ def extract_json_ld_job_data(soup):
                 "job_description": item.get("description", ""),
             }
 
-            return job_data
-
     return job_data
 
 
-def verify_location_candidates(candidates):
-    verified_locations = []
+def merge_json_ld_data(structured_data, json_ld_data):
+    """
+    JSON-LD is usually cleaner than scraped text when available.
+    Use it only to fill blanks so user-visible parser results are not overwritten.
+    """
+    if not json_ld_data:
+        return structured_data
 
-    for candidate in candidates:
-        verified = verify_german_location_with_google(candidate)
+    for key, value in json_ld_data.items():
+        if value and not structured_data.get(key):
+            structured_data[key] = value
 
-        if verified:
-            verified_locations.append(verified)
-
-    return deduplicate_locations(verified_locations)
+    return structured_data
 
 
-def extract_structured_job_data(text, url=""):
+def extract_structured_job_data(text, url="", json_ld_data=None):
     cleaned_text = normalize_whitespace(text)
     source_website = detect_source_website(url) if url else ""
 
-    company_name = extract_company_candidate(text)
-    job_title = extract_job_title_candidate(text)
+    parser_result = build_parser_result(text)
 
-    location_candidates = extract_location_candidates(text)
-    locations = verify_location_candidates(location_candidates)
-    location = locations[0] if locations else ""
-
-    # "debug": {
-    #     "company_candidate": company_name,
-    #     "job_title_candidate": job_title,
-    #     "location_candidates": location_candidates,
-    #     "verified_locations": locations,
-    # },
-
-    contact_data = extract_contact_data(text)
-
-    application_method = detect_application_method(
-        text,
-        contact_email=contact_data.get("contact_email", ""),
+    parser_report = build_parser_report(
+        parser_result,
+        json_ld_available=bool(json_ld_data),
     )
 
-    return {
-        "company_name": clean_company_name(company_name),
-        "job_title": clean_job_title(job_title),
-        "location": location,
-        "locations": locations,
+    company = parser_result["company"]
+    job = parser_result["job"]
+    locations = parser_result["locations"]
+    contacts = parser_result["contacts"]
+
+    structured_data = {
+        "company_name": company["value"],
+        "job_title": job["value"],
+        "location": locations["value"],
+        "locations": locations["verified"],
         "source_website": source_website,
-        "application_method": application_method,
-        "contact_person": contact_data.get("contact_person", ""),
-        "contact_email": contact_data.get("contact_email", ""),
-        "contact_phone": contact_data.get("contact_phone", ""),
+        "application_method": parser_result["application_method"],
+        "contact_person": contacts.get("contact_person", ""),
+        "contact_email": contacts.get("contact_email", ""),
+        "contact_phone": contacts.get("contact_phone", ""),
         "job_url": url,
         "job_description": cleaned_text[:5000],
+        "parser_report": parser_report,
         "debug": {
-            "company_candidate": company_name,
-            "job_title_candidate": job_title,
-            "location_candidates": location_candidates,
-            "verified_locations": locations,
+            "company_candidate": company["candidate"],
+            "job_title_candidate": job["candidate"],
+            "location_candidates": locations["candidates"],
+            "verified_locations": locations["verified"],
         },
     }
+
+    return merge_json_ld_data(structured_data, json_ld_data or {})

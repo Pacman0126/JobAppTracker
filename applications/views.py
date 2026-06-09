@@ -4,9 +4,11 @@ from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 
-from ai_assistant.requirement_utils import compare_keyword_overlap
+from ai_assistant.candidate_analysis import analyze_candidate_fit
+# from ai_assistant.requirement_utils import compare_keyword_overlap
 from documents.models import ApplicationDocument
 from documents.models import UserDocument
+from documents.text_utils import extract_document_text
 
 from .forms import JobApplicationForm
 from .models import ApplicationDraft
@@ -14,78 +16,65 @@ from .models import Company
 from .models import JobApplication
 
 
-def _extract_document_text(document):
-    """
-    Best-effort text extraction from a vault document.
-
-    Works directly for .txt files.
-    Tries optional PDF/DOCX libraries if installed.
-    Falls back to document title if text cannot be extracted yet.
-    """
-    if not document or not document.file:
-        return ""
-
-    filename = document.file.name.lower()
-
-    try:
-        if filename.endswith(".txt"):
-            with document.file.open("rb") as file_obj:
-                return file_obj.read().decode("utf-8", errors="ignore")
-
-        if filename.endswith(".pdf"):
-            try:
-                from pypdf import PdfReader
-            except ImportError:
-                try:
-                    from PyPDF2 import PdfReader
-                except ImportError:
-                    return document.title
-
-            with document.file.open("rb") as file_obj:
-                reader = PdfReader(file_obj)
-                pages = []
-                for page in reader.pages:
-                    pages.append(page.extract_text() or "")
-                return "\n".join(pages).strip() or document.title
-
-        if filename.endswith(".docx"):
-            try:
-                from docx import Document
-            except ImportError:
-                return document.title
-
-            with document.file.open("rb") as file_obj:
-                doc = Document(file_obj)
-                return "\n".join(
-                    paragraph.text for paragraph in doc.paragraphs
-                ).strip() or document.title
-
-    except Exception:
-        return document.title
-
-    return document.title
-
-
 def _build_match_notes(match_result):
-    matched = match_result.get("matched_keywords", [])
-    missing = match_result.get("missing_keywords", [])
-    phrases = match_result.get("requirement_phrases", [])
     score = match_result.get("match_score", 0)
 
-    matched_text = "\n".join(f"✓ {item}" for item in matched[:20]) or "-"
-    missing_text = "\n".join(f"△ {item}" for item in missing[:20]) or "-"
-    phrase_text = "\n".join(f"- {item}" for item in phrases[:8]) or "-"
+    strengths = (
+        match_result.get("strengths")
+        or match_result.get("matched_keywords", [])
+    )
 
-    return f"""Match Score: {score}%
+    gaps = (
+        match_result.get("gaps")
+        or match_result.get("missing_keywords", [])
+    )
 
-Strong keyword overlap
-{matched_text}
+    recommendations = match_result.get(
+        "recommendations",
+        [],
+    )
 
-Possible gaps / job-specific terms not found in CV
-{missing_text}
+    summary = match_result.get(
+        "summary",
+        "",
+    )
 
-Detected requirement phrases
-{phrase_text}
+    strengths_text = (
+        "\n".join(
+            f"✓ {item}"
+            for item in strengths[:15]
+        )
+        or "-"
+    )
+
+    gaps_text = (
+        "\n".join(
+            f"△ {item}"
+            for item in gaps[:15]
+        )
+        or "-"
+    )
+
+    recommendation_text = (
+        "\n".join(
+            f"• {item}"
+            for item in recommendations[:5]
+        )
+        or "-"
+    )
+
+    return f"""Candidate Match Score: {score}%
+
+{summary}
+
+Key Strengths
+{strengths_text}
+
+Potential Gaps
+{gaps_text}
+
+AI Recommendations
+{recommendation_text}
 """
 
 
@@ -97,14 +86,32 @@ def _build_anschreiben(application, selected_cv, match_result):
     else:
         salutation = "Sehr geehrte Damen und Herren,"
 
-    matched = match_result.get("matched_keywords", [])
-    missing = match_result.get("missing_keywords", [])
+    strengths = (
+        match_result.get("strengths")
+        or match_result.get("matched_keywords", [])
+    )
+
+    gaps = (
+        match_result.get("gaps")
+        or match_result.get("missing_keywords", [])
+    )
+
     score = match_result.get("match_score", 0)
 
-    strong_matches = ", ".join(
-        matched[:8]) if matched else "meine fachlichen Erfahrungen"
-    development_terms = ", ".join(
-        missing[:5]) if missing else "die ausgeschriebenen Anforderungen"
+    use_specific_matches = score >= 25 and len(strengths) >= 3
+    use_specific_gaps = score >= 25 and len(gaps) >= 3
+
+    strong_matches = (
+        ", ".join(strengths[:8])
+        if use_specific_matches
+        else "meine Erfahrung in Softwareentwicklung, Projektarbeit und technischer Problemlösung"
+    )
+
+    development_terms = (
+        ", ".join(gaps[:5])
+        if use_specific_gaps
+        else "die ausgeschriebenen fachlichen Anforderungen"
+    )
 
     return f"""{salutation}
 
@@ -307,13 +314,28 @@ def generate_anschreiben(request, pk):
         )
         return redirect("applications:application_detail", pk=pk)
 
-    cv_text = _extract_document_text(selected_cv)
+    cv_text = extract_document_text(selected_cv)
     job_description = application.job_description or ""
 
-    match_result = compare_keyword_overlap(
+    match_result = analyze_candidate_fit(
         candidate_text=cv_text,
-        job_description=job_description,
+        job_text=job_description,
     )
+
+    print("\nCV KEYWORDS")
+    print(match_result.get("candidate_keywords"))
+
+    print("\nJOB KEYWORDS")
+    print(match_result.get("job_keywords"))
+
+    print("\nMATCHED")
+    print(match_result.get("matched_keywords"))
+
+    print("\nMISSING")
+    print(match_result.get("missing_keywords"))
+
+    print("\nSCORE")
+    print(match_result.get("match_score"))
 
     draft, _created = ApplicationDraft.objects.get_or_create(
         application=application,
