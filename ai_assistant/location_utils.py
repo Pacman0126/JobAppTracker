@@ -1,4 +1,5 @@
 import re
+
 import requests
 from decouple import config
 
@@ -12,28 +13,53 @@ BAD_LOCATION_WORDS = {
     "vollzeit",
     "teilzeit",
     "festanstellung",
+    "homeoffice",
 }
 
 
 def looks_like_bad_location(candidate):
-    lowered = candidate.lower()
-
+    lowered = (candidate or "").lower()
     return any(word in lowered for word in BAD_LOCATION_WORDS)
+
+
+def location_key(location):
+    location = (location or "").lower()
+    location = re.sub(r"\b\d{5}\b", "", location)
+    location = location.replace("deutschland", "")
+    location = location.replace("germany", "")
+    location = re.sub(r"[^a-zäöüß ]", " ", location)
+    location = re.sub(r"\s+", " ", location).strip()
+    return location
+
+
+def deduplicate_locations(locations):
+    unique_locations = []
+    seen_keys = set()
+
+    for location in locations:
+        key = location_key(location)
+
+        if not key or key in seen_keys:
+            continue
+
+        seen_keys.add(key)
+        unique_locations.append(location)
+
+    return unique_locations
 
 
 def verify_german_location_with_google(candidate):
     if not candidate or looks_like_bad_location(candidate):
         return ""
 
-    original_candidate = candidate
+    candidate = re.sub(r"\s+", " ", candidate).strip(" .,:;()-")
     candidate_lower = candidate.lower()
+    has_postcode_input = bool(re.search(r"\b\d{5}\b", candidate))
 
     api_key = config("GOOGLE_MAPS_SERVER_KEY", default="")
 
     if not api_key:
         return candidate
-
-    has_postcode_input = bool(re.search(r"\b\d{5}\b", candidate))
 
     response = requests.get(
         "https://maps.googleapis.com/maps/api/geocode/json",
@@ -52,6 +78,14 @@ def verify_german_location_with_google(candidate):
         return ""
 
     for result in data.get("results", []):
+        result_types = result.get("types", [])
+
+        if not has_postcode_input and any(
+            bad_type in result_types
+            for bad_type in ("establishment", "point_of_interest", "premise")
+        ):
+            continue
+
         components = result.get("address_components", [])
 
         postcode = ""
@@ -84,9 +118,6 @@ def verify_german_location_with_google(candidate):
         if not locality or not country:
             continue
 
-        # Critical guard:
-        # If the input did not contain a postcode, the returned city must
-        # appear in the original candidate. This blocks KNDS -> Kleve.
         if not has_postcode_input:
             locality_lower = locality.lower()
 

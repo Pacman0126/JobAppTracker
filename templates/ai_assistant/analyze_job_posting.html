@@ -103,6 +103,55 @@
                         </button>
                     {% endif %}
                 </div>
+                {% if debug_data %}
+                    <div class="card border-secondary mb-4">
+                        <div class="card-header bg-light">
+                            <strong>Parser Debug</strong>
+                        </div>
+
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <strong>Company candidate:</strong>
+                                {{ debug_data.company_candidate|default:"-" }}
+                            </p>
+
+                            <p class="mb-2">
+                                <strong>Job title candidate:</strong>
+                                {{ debug_data.job_title_candidate|default:"-" }}
+                            </p>
+
+                            <p class="mb-2">
+                                <strong>Location candidates:</strong>
+                            </p>
+
+                            {% if debug_data.location_candidates %}
+                                <ul>
+                                    {% for candidate in debug_data.location_candidates %}
+                                        <li>{{ candidate }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted">No location candidates found.</p>
+                            {% endif %}
+
+                            <p class="mb-2">
+                                <strong>Verified locations:</strong>
+                            </p>
+
+                            {% if debug_data.verified_locations %}
+                                <ul>
+                                    {% for location in debug_data.verified_locations %}
+                                        <li>{{ location }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted">No verified locations found.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}                    
+
+
 
                 {% if commute_routes %}
                     <script id="commute-routes-json" type="application/json">

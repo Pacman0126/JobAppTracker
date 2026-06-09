@@ -70,6 +70,7 @@ def analyze_job_posting(request):
 
         context["result"] = result
         context["structured_data"] = structured_data
+        context["debug_data"] = structured_data.get("debug", {})
         context["job_url"] = url
         context["pasted_job_text"] = pasted_text
 
